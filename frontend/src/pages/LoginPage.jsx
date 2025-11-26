@@ -8,6 +8,7 @@ import {
   validateIdentifier,
   validatePassword
 } from '../utils/validators.js';
+import { login } from '../api/auth.js';
 
 const LoginPage = () => {
   const { values, errors, handleChange, validate } = useForm({
@@ -17,7 +18,7 @@ const LoginPage = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setStatus(null);
     const isValid = validate({
@@ -27,29 +28,50 @@ const LoginPage = () => {
     if (!isValid) {
       return;
     }
+    
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    
+    try {
+      // Определяем, является ли identifier email или телефоном
+      const isEmail = values.identifier.includes('@');
+      const credentials = {
+        password: values.password,
+      };
+      
+      if (isEmail) {
+        credentials.email = values.identifier;
+      } else {
+        credentials.phone = values.identifier;
+      }
+      
+      const response = await login(credentials);
       setStatus({
         type: 'success',
-        message:
-          'Валидация пройдена. Отправь эти данные на свой бек.'
+        message: response.message || `Добро пожаловать, ${response.nickname || 'пользователь'}!`
       });
-      console.log('login payload', values);
-    }, 700);
+      console.log('Login successful:', response);
+    } catch (error) {
+      setStatus({
+        type: 'error',
+        message: error.message || 'Произошла ошибка при входе'
+      });
+      console.error('Login error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <AuthCard
       title="Вход"
-      subtitle="Используй почту или телефон и свой пароль."
+      
     >
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
         <FormInput
           label="Почта или телефон"
           name="identifier"
           value={values.identifier}
-          placeholder="example@mail.com / +79991234567"
+          placeholder="example@mail.com / +7(999)999-99-99"
           onChange={handleChange}
           error={errors.identifier}
           autoComplete="username"
@@ -79,4 +101,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-

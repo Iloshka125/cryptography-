@@ -12,4 +12,3 @@ SubmitButton.propTypes = {
 };
 
 export default SubmitButton;
-

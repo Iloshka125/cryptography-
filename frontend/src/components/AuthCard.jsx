@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 const AuthCard = ({ title, subtitle, children }) => (
   <section className="auth-card">
     <header className="auth-card__header">
-      <h1>{title}</h1>
+      <h1 style={{marginBottom: '1.2em'}}>{title}</h1>
       {subtitle && <p>{subtitle}</p>}
     </header>
     {children}
@@ -17,4 +17,3 @@ AuthCard.propTypes = {
 };
 
 export default AuthCard;
-
