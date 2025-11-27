@@ -212,6 +212,7 @@ const RegisterPage = () => {
           onChange={handleChange}
           error={errors.password}
           autoComplete="new-password"
+          allowToggle
         />
         <FormInput
           label="Повтори пароль"
@@ -222,6 +223,7 @@ const RegisterPage = () => {
           onChange={handleChange}
           error={errors.confirmPassword}
           autoComplete="new-password"
+          allowToggle
         />
         <SubmitButton label="Далее" loading={loading} />
         {status && (

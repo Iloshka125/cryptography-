@@ -85,6 +85,7 @@ const LoginPage = () => {
           onChange={handleChange}
           error={errors.password}
           autoComplete="current-password"
+          allowToggle
         />
         <SubmitButton label="Войти" loading={loading} />
         {status && (

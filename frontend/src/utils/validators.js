@@ -1,11 +1,14 @@
 const emailRegex =
   /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-const phoneRegex = /^\+?\d{10,15}$/;
+const phoneDigitsRegex = /^\d{10,15}$/;
 
 export const isEmail = (value = '') => emailRegex.test(value.trim());
 
-export const isPhone = (value = '') =>
-  phoneRegex.test(value.replace(/\s+/g, ''));
+export const isPhone = (value = '') => {
+  // remove everything except digits to allow formatted inputs like +7(999)123-45-67
+  const digitsOnly = value.replace(/\D/g, '');
+  return phoneDigitsRegex.test(digitsOnly);
+};
 
 export const validateIdentifier = (value) => {
   if (!value.trim()) {
