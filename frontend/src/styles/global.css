@@ -316,6 +316,12 @@ body::after {
   gap: 6px;
 }
 
+.field__input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .field__label {
   font-size: 14px;
   color: rgba(94, 200, 216, 0.85);
@@ -338,6 +344,11 @@ body::after {
     0 0 2px rgba(0, 255, 255, 0.1),
     0 0 4px rgba(0, 255, 255, 0.06);
   text-shadow: 0 0 1px rgba(0, 255, 255, 0.08);
+  width: 100%;
+}
+
+.field__input-wrapper .field__input {
+  padding-right: 48px;
 }
 
 .field__input::placeholder {
@@ -360,6 +371,42 @@ body::after {
     0 0 3px rgba(255, 0, 110, 0.15),
     0 0 5px rgba(255, 0, 110, 0.1);
 }
+
+.field__toggle {
+  position: absolute;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: transform 0.25s ease, opacity 0.2s ease, color 0.2s ease;
+  padding: 0;
+}
+
+.field__toggle svg {
+  transition: transform 0.25s ease;
+}
+
+.field__toggle:hover {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.field__toggle--active {
+  color: var(--primary);
+}
+
+.field__toggle--active svg {
+  transform: rotate(180deg);
+}
+
 
 .field__error {
   font-size: 13px;
