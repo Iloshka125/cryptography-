@@ -10,7 +10,8 @@ import {
   validateNickname,
   validatePassword,
   validatePasswordConfirmation,
-  validatePhoneOptional
+  validatePhoneOptional,
+  normalizePhoneForDB
 } from '../utils/validators.js';
 import { register } from '../api/auth.js';
 
@@ -97,7 +98,8 @@ const RegisterPage = () => {
       data.email = values.email;
     }
     if (values.phone) {
-      data.phone = values.phone;
+      // Нормализуем номер телефона для БД (формат +7XXXXXXXXXX)
+      data.phone = normalizePhoneForDB(values.phone);
     }
     
     setUserData(data);

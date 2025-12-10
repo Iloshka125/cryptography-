@@ -6,7 +6,9 @@ import SubmitButton from '../components/SubmitButton.jsx';
 import useForm from '../hooks/useForm.js';
 import {
   validateIdentifier,
-  validatePassword
+  validatePassword,
+  normalizePhoneForDB,
+  isPhone
 } from '../utils/validators.js';
 import { login } from '../api/auth.js';
 
@@ -41,7 +43,8 @@ const LoginPage = () => {
       if (isEmail) {
         credentials.email = values.identifier;
       } else {
-        credentials.phone = values.identifier;
+        // Нормализуем номер телефона для БД (формат +7XXXXXXXXXX)
+        credentials.phone = normalizePhoneForDB(values.identifier);
       }
       
       const response = await login(credentials);

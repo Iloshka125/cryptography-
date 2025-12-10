@@ -70,3 +70,36 @@ export const validatePasswordConfirmation = (value = '', values) => {
   return undefined;
 };
 
+/**
+ * Нормализует номер телефона для отправки в БД
+ * Преобразует любой формат (8XXXXXXXXXX, +7XXXXXXXXXX, 7XXXXXXXXXX) в +7XXXXXXXXXX
+ * @param {string} phone - Номер телефона в любом формате
+ * @returns {string} - Номер в формате +7XXXXXXXXXX
+ */
+export const normalizePhoneForDB = (phone = '') => {
+  // Убираем все нецифровые символы
+  const digitsOnly = phone.replace(/\D/g, '');
+  
+  if (!digitsOnly) {
+    return '';
+  }
+  
+  let normalized = digitsOnly;
+  
+  // Если начинается с 8, заменяем на 7
+  if (normalized.startsWith('8')) {
+    normalized = `7${normalized.slice(1)}`;
+  }
+  
+  // Если не начинается с 7, добавляем 7 в начало
+  if (!normalized.startsWith('7')) {
+    normalized = `7${normalized}`;
+  }
+  
+  // Обрезаем до 11 цифр (7 + 10 цифр номера)
+  normalized = normalized.slice(0, 11);
+  
+  // Возвращаем в формате +7XXXXXXXXXX
+  return `+${normalized}`;
+};
+
