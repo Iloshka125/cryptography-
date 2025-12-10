@@ -166,9 +166,10 @@ const RegisterPage = () => {
   }
 
   return (
-    <AuthCard
-      title="Регистрация"
-    >
+    <div className="page-fade-in">
+      <AuthCard
+        title="Регистрация"
+      >
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
         <FormInput
           label="Никнейм"
@@ -236,6 +237,7 @@ const RegisterPage = () => {
         </p>
       </form>
     </AuthCard>
+    </div>
   );
 };
 

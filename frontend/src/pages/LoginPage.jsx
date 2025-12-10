@@ -62,42 +62,44 @@ const LoginPage = () => {
   };
 
   return (
-    <AuthCard
-      title="Вход"
-      
-    >
-      <form className="auth-form" onSubmit={handleSubmit} noValidate>
-        <FormInput
-          label="Почта или телефон"
-          name="identifier"
-          value={values.identifier}
-          placeholder="example@mail.com / +7(999)999-99-99"
-          onChange={handleChange}
-          error={errors.identifier}
-          autoComplete="username"
-        />
-        <FormInput
-          label="Пароль"
-          name="password"
-          type="password"
-          value={values.password}
-          placeholder="••••••••"
-          onChange={handleChange}
-          error={errors.password}
-          autoComplete="current-password"
-          allowToggle
-        />
-        <SubmitButton label="Войти" loading={loading} />
-        {status && (
-          <p className={`status-message status-message--${status.type}`}>
-            {status.message}
+    <div className="page-fade-in">
+      <AuthCard
+        title="Вход"
+        
+      >
+        <form className="auth-form" onSubmit={handleSubmit} noValidate>
+          <FormInput
+            label="Почта или телефон"
+            name="identifier"
+            value={values.identifier}
+            placeholder="example@mail.com / +7(999)999-99-99"
+            onChange={handleChange}
+            error={errors.identifier}
+            autoComplete="username"
+          />
+          <FormInput
+            label="Пароль"
+            name="password"
+            type="password"
+            value={values.password}
+            placeholder="••••••••"
+            onChange={handleChange}
+            error={errors.password}
+            autoComplete="current-password"
+            allowToggle
+          />
+          <SubmitButton label="Войти" loading={loading} />
+          {status && (
+            <p className={`status-message status-message--${status.type}`}>
+              {status.message}
+            </p>
+          )}
+          <p className="form-footer">
+            Нет аккаунта? <Link to="/register">Создай его</Link>
           </p>
-        )}
-        <p className="form-footer">
-          Нет аккаунта? <Link to="/register">Создай его</Link>
-        </p>
-      </form>
-    </AuthCard>
+        </form>
+      </AuthCard>
+    </div>
   );
 };
 
