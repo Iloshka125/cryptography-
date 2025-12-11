@@ -17,8 +17,16 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Пользователь с такими данными уже существует' });
     }
 
-    await User.create({ nickname, email, phone, password });
-    res.status(201).json({ message: 'Пользователь успешно зарегистрирован' });
+    const user = await User.create({ nickname, email, phone, password });
+    
+    // Создаем начальный баланс для нового пользователя
+    const Balance = require('../models/Balance');
+    await Balance.create(user.id, 1000, 5);
+    
+    res.status(201).json({ 
+      message: 'Пользователь успешно зарегистрирован',
+      user_id: user.id 
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -43,7 +51,19 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Неверные учетные данные' });
     }
 
-    res.json({ message: 'Успешный вход', nickname: user.nickname });
+    // Получаем баланс пользователя
+    const Balance = require('../models/Balance');
+    const balance = await Balance.findByUserId(user.id);
+
+    res.json({ 
+      message: 'Успешный вход', 
+      nickname: user.nickname,
+      user_id: user.id,
+      balance: {
+        coins: balance.coins,
+        hints: balance.hints,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ошибка сервера' });

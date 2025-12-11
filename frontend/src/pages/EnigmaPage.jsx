@@ -1,20 +1,31 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import HeaderBar from '../components/enigma/HeaderBar.jsx';
 import {
   CategoriesGrid,
   CategoryLevels,
 } from '../components/enigma/CategoriesSection.jsx';
-import ShopSection from '../components/enigma/ShopSection.jsx';
+import ShopDialog from '../components/enigma/ShopDialog.jsx';
 import BattlePassSection from '../components/enigma/BattlePassSection.jsx';
 import LeaderboardSection from '../components/enigma/LeaderboardSection.jsx';
-import ProfileDialog from '../components/enigma/ProfileDialog.jsx';
+import CompetitionsSection from '../components/enigma/CompetitionsSection.jsx';
+import VersusSection from '../components/enigma/VersusSection.jsx';
 import AuthModal from '../components/enigma/AuthModal.jsx';
 import HeroSection from '../components/enigma/HeroSection.jsx';
 
 const EnigmaPage = () => {
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { showToast } = useToast();
+  const { 
+    isAuthenticated, 
+    login: authLogin, 
+    balance, 
+    subtractCoins, 
+    addHints,
+    fetchBalance 
+  } = useAuth();
   const [isTransitioning, setIsTransitioning] = useState(false);
   const transitionTimeoutRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -23,19 +34,20 @@ const EnigmaPage = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [username, setUsername] = useState('CyberHacker');
-  const [userEmail, setUserEmail] = useState('user@cybernet.com');
-  const [userPhone, setUserPhone] = useState('+7 (999) 123-45-67');
-  const [userAvatar, setUserAvatar] = useState('🎯');
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [username] = useState('CyberHacker');
+  const [userAvatar] = useState('🎯');
 
   const [currentSection, setCurrentSection] = useState('categories');
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [coins, setCoins] = useState(1000);
-  const [hints, setHints] = useState(5);
+  const [isShopOpen, setIsShopOpen] = useState(false);
+  const [userLevel, setUserLevel] = useState(7);
+
+  // Загружаем баланс при монтировании компонента
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchBalance();
+    }
+  }, [isAuthenticated, fetchBalance]);
 
   const [registrationStep, setRegistrationStep] = useState(0);
   const [task1Answers, setTask1Answers] = useState({
@@ -97,33 +109,26 @@ const EnigmaPage = () => {
     [],
   );
 
-  const leaderboardData = [
-    { rank: 1, username: 'CryptoMaster', score: 15420, avatar: '👑' },
-    { rank: 2, username: 'CyberHacker', score: 12350, avatar: '🎯' },
-    { rank: 3, username: 'CodeBreaker', score: 10890, avatar: '🔓' },
-    { rank: 4, username: 'DigitalNinja', score: 9540, avatar: '🥷' },
-    { rank: 5, username: 'HackTheSystem', score: 8720, avatar: '💻' },
-    { rank: 6, username: 'ByteBandit', score: 7650, avatar: '🎮' },
-    { rank: 7, username: 'NeonCoder', score: 6430, avatar: '⚡' },
-    { rank: 8, username: 'QuantumHack', score: 5820, avatar: '🌟' },
-    { rank: 9, username: 'BinaryBoss', score: 4990, avatar: '🔥' },
-    { rank: 10, username: 'MatrixRunner', score: 4120, avatar: '🚀' },
-  ];
+  const leaderboardData = useMemo(() => [
+    { rank: 1, username: 'CryptoMaster', score: 15420, avatar: '👑', level: 10 },
+    { rank: 2, username: username, score: 12350, avatar: userAvatar, level: userLevel },
+    { rank: 3, username: 'CodeBreaker', score: 10890, avatar: '🔓', level: 9 },
+    { rank: 4, username: 'DigitalNinja', score: 9540, avatar: '🥷', level: 8 },
+    { rank: 5, username: 'HackTheSystem', score: 8720, avatar: '💻', level: 7 },
+  ], [username, userAvatar, userLevel]);
 
-  const achievements = [
-    { id: 1, name: 'Первый шаг', description: 'Пройдите первый уровень', unlocked: true, icon: '🎯' },
-    { id: 2, name: 'Взломщик', description: 'Взломайте 5 шифров', unlocked: true, icon: '🔓' },
-    { id: 3, name: 'Коллекционер', description: 'Соберите 1000 монет', unlocked: true, icon: '💰' },
-    { id: 4, name: 'Мастер кода', description: 'Пройдите все уровни без подсказок', unlocked: false, icon: '👑' },
-    { id: 5, name: 'Легенда', description: 'Победите финального босса', unlocked: false, icon: '⭐' },
-  ];
 
   const battlePassRewards = [
-    { level: 1, reward: '100 монет', unlocked: true },
-    { level: 2, reward: '5 подсказок', unlocked: true },
-    { level: 3, reward: 'Скин "Неон"', unlocked: false },
-    { level: 4, reward: '250 монет', unlocked: false },
-    { level: 5, reward: 'Уникальный аватар', unlocked: false },
+    { level: 1, reward: '100 монет', unlocked: true, claimed: true },
+    { level: 2, reward: '5 подсказок', unlocked: true, claimed: true },
+    { level: 3, reward: 'Скин "Неон"', unlocked: true, claimed: false },
+    { level: 4, reward: '250 монет', unlocked: true, claimed: false },
+    { level: 5, reward: 'Уникальный аватар', unlocked: false, claimed: false },
+    { level: 6, reward: '500 монет', unlocked: false, claimed: false },
+    { level: 7, reward: 'Уникальный значок 👑', unlocked: false, claimed: false },
+    { level: 8, reward: '10 подсказок', unlocked: false, claimed: false },
+    { level: 9, reward: '1000 монет', unlocked: false, claimed: false },
+    { level: 10, reward: 'Легендарный аватар 🌟', unlocked: false, claimed: false },
   ];
 
   const shopItems = [
@@ -137,7 +142,7 @@ const EnigmaPage = () => {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    setIsAuthenticated(true);
+    authLogin(); // Устанавливаем авторизацию через контекст
     setIsOpen(false);
   };
 
@@ -169,7 +174,7 @@ const EnigmaPage = () => {
   };
 
   const handleFinalRegistration = () => {
-    setIsAuthenticated(true);
+    authLogin(); // Устанавливаем авторизацию через контекст
     setIsOpen(false);
   };
 
@@ -186,30 +191,20 @@ const EnigmaPage = () => {
     }, 180); // легкая задержка для анимации
   };
 
-  const handleBuyHints = (amount, price) => {
-    if (coins >= price) {
-      setCoins(coins - price);
-      setHints(hints + amount);
+  const handleBuyHints = async (amount, price) => {
+    if (balance.coins >= price) {
+      try {
+        await subtractCoins(price);
+        await addHints(amount);
+        showToast(`Куплено ${amount} подсказок!`, 'success');
+      } catch (error) {
+        showToast(error.message || 'Ошибка при покупке подсказок', 'error');
+      }
+    } else {
+      showToast('Недостаточно монет!', 'error');
     }
   };
 
-  const handleProfileUpdate = (e) => {
-    e.preventDefault();
-    alert('Профиль успешно обновлен!');
-    setIsProfileOpen(false);
-  };
-
-  const handlePasswordChange = (e) => {
-    e.preventDefault();
-    if (newPassword !== confirmNewPassword) {
-      alert('Новые пароли не совпадают!');
-      return;
-    }
-    alert('Пароль успешно изменен!');
-    setOldPassword('');
-    setNewPassword('');
-    setConfirmNewPassword('');
-  };
 
   const isTask1AllChecked = useMemo(
     () => Object.values(task1Answers).every(Boolean),
@@ -224,13 +219,16 @@ const EnigmaPage = () => {
     return (
       <div className={`min-h-screen relative overflow-hidden ${isTransitioning ? 'page-fade-out' : 'page-fade-in'}`}>
         <HeaderBar
-          coins={coins}
-          hints={hints}
-          onOpenProfile={() => setIsProfileOpen(true)}
+          coins={balance.coins}
+          hints={balance.hints}
           onChangeSection={(section) => {
-            setCurrentSection(section);
-            if (section !== 'categories') {
-              setSelectedCategory(null);
+            if (section === 'shop') {
+              setIsShopOpen(true);
+            } else {
+              setCurrentSection(section);
+              if (section !== 'categories') {
+                setSelectedCategory(null);
+              }
             }
           }}
           currentSection={currentSection}
@@ -258,56 +256,49 @@ const EnigmaPage = () => {
             </div>
           )}
 
-          {currentSection === 'shop' && (
-            <div className="slide-panel">
-              <ShopSection
-                shopItems={shopItems}
-                onBuyHints={handleBuyHints}
-                coins={coins}
-              />
-            </div>
-          )}
-
           {currentSection === 'battlepass' && (
             <div className="slide-panel">
-              <BattlePassSection rewards={battlePassRewards} />
+              <BattlePassSection rewards={battlePassRewards} userLevel={userLevel} showToast={showToast} />
             </div>
           )}
 
           {currentSection === 'leaderboard' && (
             <div className="slide-panel">
-              <LeaderboardSection data={leaderboardData} />
+              <LeaderboardSection 
+                data={leaderboardData} 
+                username={username}
+                userLevel={userLevel}
+              />
+            </div>
+          )}
+
+          {currentSection === 'competitions' && (
+            <div className="slide-panel">
+              <CompetitionsSection showToast={showToast} />
+            </div>
+          )}
+
+          {currentSection === 'versus' && (
+            <div className="slide-panel">
+              <VersusSection showToast={showToast} />
             </div>
           )}
         </div>
 
-        <ProfileDialog
-          open={isProfileOpen}
-          onOpenChange={setIsProfileOpen}
-          userAvatar={userAvatar}
-          setUserAvatar={setUserAvatar}
-          username={username}
-          setUsername={setUsername}
-          userEmail={userEmail}
-          setUserEmail={setUserEmail}
-          userPhone={userPhone}
-          setUserPhone={setUserPhone}
-          oldPassword={oldPassword}
-          setOldPassword={setOldPassword}
-          newPassword={newPassword}
-          setNewPassword={setNewPassword}
-          confirmNewPassword={confirmNewPassword}
-          setConfirmNewPassword={setConfirmNewPassword}
-          onSaveProfile={handleProfileUpdate}
-          onChangePassword={handlePasswordChange}
-          achievements={achievements}
-        />
+            <ShopDialog
+              open={isShopOpen}
+              onOpenChange={setIsShopOpen}
+              shopItems={shopItems}
+              onBuyHints={handleBuyHints}
+              coins={balance.coins}
+              showToast={showToast}
+            />
       </div>
     );
   }
 
   return (
-    <>
+    <div className="min-h-screen">
       <div className={`slide-panel ${isTransitioning ? 'page-fade-out' : 'page-fade-in'}`}>
         <HeroSection onStart={openAuthModal} />
       </div>
@@ -339,7 +330,7 @@ const EnigmaPage = () => {
           handleFinalRegistration={handleFinalRegistration}
         />
       </div>
-    </>
+    </div>
   );
 };
 

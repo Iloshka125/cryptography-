@@ -1,16 +1,19 @@
 import PropTypes from 'prop-types';
 import { Medal, Star } from '../IconSet.jsx';
 
-const LeaderboardSection = ({ data }) => (
-  <div className="space-y-6">
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-3xl text-cyan-300 drop-shadow-[0_0_10px_rgba(0,255,255,0.8)]">
-        LEADERBOARD
-      </h2>
-      <div className="px-4 py-2 border-2 border-amber-300 rounded-lg bg-amber-300/10">
-        <span className="text-amber-200">Ваш рейтинг: #2</span>
+const LeaderboardSection = ({ data, username, userLevel, userScore = 6500 }) => {
+  const userRank = data.findIndex((p) => p.username === username) + 1 || 4;
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-3xl text-cyan-300 drop-shadow-[0_0_10px_rgba(0,255,255,0.8)] text-center flex-1">
+          LEADERBOARD
+        </h2>
+        <div className="px-4 py-2 border-2 border-amber-300 rounded-lg bg-amber-300/10">
+          <span className="text-amber-200">Ваш рейтинг: #{userRank}</span>
+        </div>
       </div>
-    </div>
 
     <div className="space-y-3">
       {data.map((player) => (
@@ -19,7 +22,7 @@ const LeaderboardSection = ({ data }) => (
           className={`p-6 border-2 rounded-lg flex items-center justify-between transition-all ${
             player.rank <= 3
               ? 'border-amber-300 bg-gradient-to-r from-amber-300/10 to-amber-300/5 shadow-[0_0_25px_rgba(255,215,0,0.3)]'
-              : player.username === 'CyberHacker'
+              :               player.username === username
                 ? 'border-cyan-400 bg-gradient-to-r from-cyan-400/10 to-cyan-300/5 shadow-[0_0_25px_rgba(0,255,255,0.3)]'
                 : 'border-cyan-200/30 bg-[#0a0a0f]/70 hover:border-cyan-200/50'
           }`}
@@ -53,13 +56,13 @@ const LeaderboardSection = ({ data }) => (
                 <span className="text-2xl">{player.avatar}</span>
                 <h3
                   className={`text-xl ${
-                    player.username === 'CyberHacker'
+                    player.username === username
                       ? 'text-cyan-200'
                       : 'text-cyan-100'
                   }`}
                 >
                   {player.username}
-                  {player.username === 'CyberHacker' && (
+                  {player.username === username && (
                     <span className="ml-2 text-xs text-cyan-200 border border-cyan-400 px-2 py-1 rounded">
                       ВЫ
                     </span>
@@ -70,9 +73,14 @@ const LeaderboardSection = ({ data }) => (
                 <div className="flex items-center gap-2">
                   <Star className="w-4 h-4 text-amber-300" />
                   <span className="text-amber-200">
-                    {player.score.toLocaleString()} XP
+                    {player.score.toLocaleString()} очков
                   </span>
                 </div>
+                {player.level && (
+                  <span className="text-cyan-200/80 text-sm">
+                    Уровень {player.level}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -91,10 +99,14 @@ const LeaderboardSection = ({ data }) => (
       ))}
     </div>
   </div>
-);
+  );
+};
 
 LeaderboardSection.propTypes = {
   data: PropTypes.array.isRequired,
+  username: PropTypes.string,
+  userLevel: PropTypes.number,
+  userScore: PropTypes.number,
 };
 
 export default LeaderboardSection;

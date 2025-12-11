@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AuthCard from '../components/AuthCard.jsx';
 import FormInput from '../components/FormInput.jsx';
 import SubmitButton from '../components/SubmitButton.jsx';
 import useForm from '../hooks/useForm.js';
+import { useToast } from '../contexts/ToastContext.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import {
   validateIdentifier,
   validatePassword,
@@ -13,16 +15,17 @@ import {
 import { login } from '../api/auth.js';
 
 const LoginPage = () => {
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const { login: authLogin } = useAuth();
   const { values, errors, handleChange, validate } = useForm({
     identifier: '',
     password: ''
   });
-  const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setStatus(null);
     const isValid = validate({
       identifier: (value) => validateIdentifier(value),
       password: (value) => validatePassword(value)
@@ -48,16 +51,27 @@ const LoginPage = () => {
       }
       
       const response = await login(credentials);
-      setStatus({
-        type: 'success',
-        message: response.message || `Добро пожаловать, ${response.nickname || 'пользователь'}!`
+      // Устанавливаем авторизацию с данными пользователя
+      authLogin({
+        user_id: response.user_id,
+        email: credentials.email,
+        phone: credentials.phone,
+        balance: response.balance,
       });
+      showToast(
+        response.message || `Добро пожаловать, ${response.nickname || 'пользователь'}!`,
+        'success'
+      );
       console.log('Login successful:', response);
+      // Перенаправляем на главную страницу
+      setTimeout(() => {
+        navigate('/enigma');
+      }, 500);
     } catch (error) {
-      setStatus({
-        type: 'error',
-        message: error.message || 'Произошла ошибка при входе'
-      });
+      showToast(
+        error.message || 'Произошла ошибка при входе',
+        'error'
+      );
       console.error('Login error:', error);
     } finally {
       setLoading(false);
@@ -65,7 +79,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="page-fade-in">
+    <div className="page-fade-in min-h-screen flex items-center justify-center p-4">
       <AuthCard
         title="Вход"
         
@@ -92,11 +106,6 @@ const LoginPage = () => {
             allowToggle
           />
           <SubmitButton label="Войти" loading={loading} />
-          {status && (
-            <p className={`status-message status-message--${status.type}`}>
-              {status.message}
-            </p>
-          )}
           <p className="form-footer">
             Нет аккаунта? <Link to="/register">Создай его</Link>
           </p>

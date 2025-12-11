@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import AuthCard from './AuthCard.jsx';
 import FormInput from './FormInput.jsx';
+import { useToast } from '../contexts/ToastContext.jsx';
 
 const questions = [
   {
@@ -40,34 +41,32 @@ const questions = [
 ];
 
 const CryptoQuiz = ({ userData, onComplete, onBack }) => {
+  const { showToast } = useToast();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [textAnswer, setTextAnswer] = useState('');
-  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const question = questions[currentQuestion];
   const isLastQuestion = currentQuestion === questions.length - 1;
 
   const handleNext = () => {
-    setError(null);
-
     if (question.type === 'multiple-choice') {
       if (selectedAnswer === null) {
-        setError('Пожалуйста, выберите ответ');
+        showToast('Пожалуйста, выберите ответ', 'error');
         return;
       }
       if (selectedAnswer !== question.correctAnswer) {
-        setError('Неверный ответ. Попробуйте еще раз.');
+        showToast('Неверный ответ. Попробуйте еще раз.', 'error');
         return;
       }
     } else if (question.type === 'text-input') {
       if (!textAnswer.trim()) {
-        setError('Пожалуйста, введите ответ');
+        showToast('Пожалуйста, введите ответ', 'error');
         return;
       }
       if (textAnswer.trim().toUpperCase() !== question.correctAnswer) {
-        setError('Неверный ответ. Попробуйте еще раз.');
+        showToast('Неверный ответ. Попробуйте еще раз.', 'error');
         return;
       }
     }
@@ -78,7 +77,6 @@ const CryptoQuiz = ({ userData, onComplete, onBack }) => {
       setCurrentQuestion(currentQuestion + 1);
       setSelectedAnswer(null);
       setTextAnswer('');
-      setError(null);
     }
   };
 
@@ -87,7 +85,7 @@ const CryptoQuiz = ({ userData, onComplete, onBack }) => {
     try {
       await onComplete(userData);
     } catch (err) {
-      setError(err.message || 'Ошибка при регистрации');
+      showToast(err.message || 'Ошибка при регистрации', 'error');
       setLoading(false);
     }
   };
@@ -115,7 +113,6 @@ const CryptoQuiz = ({ userData, onComplete, onBack }) => {
                   checked={selectedAnswer === index}
                   onChange={() => {
                     setSelectedAnswer(index);
-                    setError(null);
                   }}
                 />
                 <span>{option}</span>
@@ -133,17 +130,12 @@ const CryptoQuiz = ({ userData, onComplete, onBack }) => {
               placeholder="Введите ответ"
               onChange={(e) => {
                 setTextAnswer(e.target.value.toUpperCase());
-                setError(null);
               }}
               error={null}
               autoComplete="off"
             />
             <p className="quiz-hint">{question.hint}</p>
           </div>
-        )}
-
-        {error && (
-          <p className="status-message status-message--error">{error}</p>
         )}
 
         <div className="quiz-actions">
@@ -155,7 +147,6 @@ const CryptoQuiz = ({ userData, onComplete, onBack }) => {
                 setCurrentQuestion(currentQuestion - 1);
                 setSelectedAnswer(null);
                 setTextAnswer('');
-                setError(null);
               } else {
                 onBack();
               }

@@ -1,6 +1,8 @@
 const express = require('express');
 const authRoutes = require('./routes/auth');
+const balanceRoutes = require('./routes/balance');
 const createUsersTable = require('./migrations/createUsersTable');
+const createUserBalanceTable = require('./migrations/createUserBalanceTable');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,11 +21,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Создание таблицы при старте
+// Создание таблиц при старте
 createUsersTable();
+createUserBalanceTable();
 
 // Маршруты
 app.use('/auth', authRoutes);
+app.use('/balance', balanceRoutes);
 
 // 404
 app.use('*', (req, res) => {

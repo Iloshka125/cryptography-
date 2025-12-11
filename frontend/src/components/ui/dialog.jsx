@@ -41,13 +41,14 @@ DialogContent.propTypes = {
   children: PropTypes.node,
 };
 
-export const DialogHeader = ({ children }) => (
-  <header className="space-y-1 p-4 border-b border-cyan-500/20">
+export const DialogHeader = ({ className = '', children }) => (
+  <header className={`space-y-1 p-4 border-b border-cyan-500/20 ${className}`}>
     {children}
   </header>
 );
 
 DialogHeader.propTypes = {
+  className: PropTypes.string,
   children: PropTypes.node,
 };
 

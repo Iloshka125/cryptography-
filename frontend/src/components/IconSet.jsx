@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 
 const createIcon = (glyph) => {
   const Icon = ({ className = '' }) => (
-    <span className={className} aria-hidden="true">
+    <span className={`inline-flex items-center justify-center ${className}`} aria-hidden="true">
       {glyph}
     </span>
   );
@@ -33,6 +33,9 @@ export const Medal = createIcon('🥇');
 export const Grid3x3 = createIcon('🔳');
 export const Phone = createIcon('📞');
 export const Mail = createIcon('✉️');
+export const Crown = createIcon('👑');
+export const ArrowLeft = createIcon('←');
+export const Clock = createIcon('⏰');
 
 // A simple star icon with outline for leaderboard maybe, reuse Star if needed.
 

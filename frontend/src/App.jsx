@@ -1,8 +1,12 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { ToastProvider } from './contexts/ToastContext.jsx';
+import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import EnigmaPage from './pages/EnigmaPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
+import LevelPage from './pages/LevelPage.jsx';
 
 const PageTransition = ({ children }) => {
   const location = useLocation();
@@ -27,30 +31,91 @@ const PageTransition = ({ children }) => {
       className={transitionStage === 'fadeOut' ? 'page-fade-out' : 'page-fade-in'}
       onAnimationEnd={onTransitionEnd}
     >
-      <Routes location={displayLocation}>
-        {children}
-      </Routes>
+      {children}
     </div>
   );
 };
 
-const AppRoutes = () => (
-  <Routes>
-    <Route index element={<Navigate to="/enigma" replace />} />
-    <Route path="/enigma" element={<EnigmaPage />} />
-    <Route path="/login" element={<LoginPage />} />
-    <Route path="/register" element={<RegisterPage />} />
-    <Route path="*" element={<Navigate to="/enigma" replace />} />
-  </Routes>
-);
+const ProtectedRoute = ({ children, requireAuth = false }) => {
+  const { isAuthenticated } = useAuth();
+  
+  if (requireAuth && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (!requireAuth && isAuthenticated) {
+    return <Navigate to="/enigma" replace />;
+  }
+  
+  return children;
+};
+
+const AppRoutes = () => {
+  const { isAuthenticated } = useAuth();
+  
+  return (
+    <Routes>
+      <Route index element={<Navigate to="/enigma" replace />} />
+      <Route 
+        path="/enigma" 
+        element={<EnigmaPage />} 
+      />
+      <Route 
+        path="/login" 
+        element={
+          <ProtectedRoute requireAuth={false}>
+            <LoginPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/register" 
+        element={
+          <ProtectedRoute requireAuth={false}>
+            <RegisterPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <ProfilePage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/level/:categoryId/:levelId" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <LevelPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="*" 
+        element={
+          <Navigate 
+            to={isAuthenticated ? "/enigma" : "/login"} 
+            replace 
+          />
+        } 
+      />
+    </Routes>
+  );
+};
 
 const App = () => {
   return (
-    <div className="app-shell">
-      <PageTransition>
-        <AppRoutes />
-      </PageTransition>
-    </div>
+    <AuthProvider>
+      <ToastProvider>
+        <div className="app-shell">
+          <PageTransition>
+            <AppRoutes />
+          </PageTransition>
+        </div>
+      </ToastProvider>
+    </AuthProvider>
   );
 };
 

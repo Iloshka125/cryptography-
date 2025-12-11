@@ -224,9 +224,6 @@ body {
     linear-gradient(0deg, #09262d 0, #09262d 1px, transparent 1px, transparent 50px),
     linear-gradient(90deg, #09262d 0, #09262d 1px, transparent 1px, transparent 50px);
   background-size: 50px 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: var(--foreground);
   font-family: 'Inter', system-ui, sans-serif;
   font-size: var(--font-size);
@@ -264,12 +261,9 @@ body::after {
 }
 
 .app-shell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 16px;
   position: relative;
   z-index: 1;
+  width: 100%;
 }
 
 .auth-card {

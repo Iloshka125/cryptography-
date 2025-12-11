@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AuthCard from '../components/AuthCard.jsx';
 import FormInput from '../components/FormInput.jsx';
 import SubmitButton from '../components/SubmitButton.jsx';
 import CryptoQuiz from '../components/CryptoQuiz.jsx';
 import useForm from '../hooks/useForm.js';
+import { useToast } from '../contexts/ToastContext.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import {
   validateEmailOptional,
   validateNickname,
@@ -61,6 +63,9 @@ const formatPhoneNumber = (rawValue) => {
 };
 
 const RegisterPage = () => {
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const { login: authLogin } = useAuth();
   const { values, errors, handleChange, validate } = useForm({
     nickname: '',
     email: '',
@@ -68,14 +73,12 @@ const RegisterPage = () => {
     password: '',
     confirmPassword: ''
   });
-  const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [userData, setUserData] = useState(null);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setStatus(null);
     const isValid = validate({
       nickname: (value) => validateNickname(value),
       email: (value, all) => validateEmailOptional(value, all),
@@ -108,24 +111,30 @@ const RegisterPage = () => {
 
   const handleQuizComplete = async (data) => {
     setLoading(true);
-    setStatus(null);
     
     try {
       const response = await register(data);
-      setStatus({
-        type: 'success',
-        message: response.message || 'Пользователь успешно зарегистрирован!'
+      // Устанавливаем авторизацию с данными пользователя
+      authLogin({
+        user_id: response.user_id,
+        email: data.email,
+        phone: data.phone,
+        balance: { coins: 1000, hints: 5 }, // Начальный баланс при регистрации
       });
+      showToast(
+        response.message || 'Пользователь успешно зарегистрирован!',
+        'success'
+      );
       console.log('Registration successful:', response);
-      // Можно добавить редирект на страницу входа через несколько секунд
+      // Перенаправляем на главную страницу
       setTimeout(() => {
-        window.location.href = '/login';
-      }, 2000);
+        navigate('/enigma');
+      }, 1500);
     } catch (error) {
-      setStatus({
-        type: 'error',
-        message: error.message || 'Произошла ошибка при регистрации'
-      });
+      showToast(
+        error.message || 'Произошла ошибка при регистрации',
+        'error'
+      );
       console.error('Registration error:', error);
       setLoading(false);
       throw error;
@@ -150,25 +159,20 @@ const RegisterPage = () => {
   // Если показываем квиз, рендерим его
   if (showQuiz && userData) {
     return (
-      <>
-        <CryptoQuiz
-          userData={userData}
-          onComplete={handleQuizComplete}
-          onBack={handleQuizBack}
-        />
-        {status && (
-          <div style={{ marginTop: '20px', textAlign: 'center' }}>
-            <p className={`status-message status-message--${status.type}`}>
-              {status.message}
-            </p>
-          </div>
-        )}
-      </>
+      <div className="page-fade-in min-h-screen flex items-center justify-center p-4">
+        <div>
+          <CryptoQuiz
+            userData={userData}
+            onComplete={handleQuizComplete}
+            onBack={handleQuizBack}
+          />
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="page-fade-in">
+    <div className="page-fade-in min-h-screen flex items-center justify-center p-4">
       <AuthCard
         title="Регистрация"
       >
@@ -229,11 +233,6 @@ const RegisterPage = () => {
           allowToggle
         />
         <SubmitButton label="Далее" loading={loading} />
-        {status && (
-          <p className={`status-message status-message--${status.type}`}>
-            {status.message}
-          </p>
-        )}
         <p className="form-footer">
           Уже есть аккаунт? <Link to="/login">Войти</Link>
         </p>

@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 import Button from '../ui/button.jsx';
 import { Trophy, Lock, CheckCircle2 } from '../IconSet.jsx';
 
@@ -12,27 +13,29 @@ export const CategoriesGrid = ({ categories, onSelect }) => (
         <div
           key={category.id}
           onClick={() => onSelect(category.id)}
-          className="group cursor-pointer p-8 border-2 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_25px_rgba(0,255,255,0.3)] hover:shadow-[0_0_40px_rgba(0,255,255,0.6)] transition-all hover:scale-105"
+          className="group cursor-pointer p-8 border-2 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_25px_rgba(0,255,255,0.3)] hover:shadow-[0_0_40px_rgba(0,255,255,0.6)] transition-all hover:scale-105 flex flex-col h-full"
           style={{ borderColor: category.color }}
         >
-          <div className="text-center space-y-4">
+          <div className="text-center flex flex-col flex-1 h-full">
             <div className="text-6xl mb-4">{category.icon}</div>
             <h3 className="text-2xl text-cyan-300 mb-3">
               {category.name}
             </h3>
-            <p className="text-cyan-200 text-sm mb-4 min-h-[60px]">
+            <p className="text-cyan-200 text-sm mb-4 h-[80px] flex items-center justify-center flex-grow">
               {category.description}
             </p>
-            <div className="flex items-center justify-center gap-2 text-cyan-200 text-sm">
-              <Trophy className="w-4 h-4" />
-              <span>
-                {category.levels.filter((l) => l.completed).length} /{' '}
-                {category.levels.length} завершено
-              </span>
+            <div className="mt-auto pt-4 space-y-4">
+              <div className="flex items-center justify-center gap-2 text-cyan-200 text-sm">
+                <Trophy className="w-4 h-4" />
+                <span>
+                  {category.levels.filter((l) => l.completed).length} /{' '}
+                  {category.levels.length} завершено
+                </span>
+              </div>
+              <Button className="w-full bg-cyan-400 text-black hover:bg-cyan-300 shadow-[0_0_15px_rgba(0,255,255,0.4)] transition-all">
+                ВЫБРАТЬ
+              </Button>
             </div>
-            <Button className="w-full bg-cyan-400 text-black hover:bg-cyan-300 shadow-[0_0_15px_rgba(0,255,255,0.4)] transition-all mt-4">
-              ВЫБРАТЬ
-            </Button>
           </div>
         </div>
       ))}
@@ -48,7 +51,10 @@ CategoriesGrid.propTypes = {
 export const CategoryLevels = ({
   category,
   onBack,
-}) => (
+}) => {
+  const navigate = useNavigate();
+  
+  return (
   <div className="space-y-6">
     <div className="flex items-center gap-4 mb-6">
       <Button
@@ -86,6 +92,11 @@ export const CategoryLevels = ({
           </h3>
           <Button
             disabled={level.locked}
+            onClick={() => {
+              if (!level.locked) {
+                navigate(`/level/${category.id}/${level.id}`);
+              }
+            }}
             className={`w-full ${
               level.completed
                 ? 'bg-green-500 hover:bg-green-400'
@@ -102,7 +113,8 @@ export const CategoryLevels = ({
       ))}
     </div>
   </div>
-);
+  );
+};
 
 CategoryLevels.propTypes = {
   category: PropTypes.object,
