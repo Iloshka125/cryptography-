@@ -22,6 +22,10 @@ export const AuthProvider = ({ children }) => {
     return localStorage.getItem('userPhone') || null;
   });
   
+  const [username, setUsername] = useState(() => {
+    return localStorage.getItem('username') || null;
+  });
+  
   const [balance, setBalance] = useState(() => {
     const stored = localStorage.getItem('balance');
     return stored ? JSON.parse(stored) : { coins: 0, hints: 0 };
@@ -55,6 +59,9 @@ export const AuthProvider = ({ children }) => {
       if (userPhone) {
         localStorage.setItem('userPhone', userPhone);
       }
+      if (username) {
+        localStorage.setItem('username', username);
+      }
       // Загружаем баланс при авторизации
       fetchBalance();
     } else {
@@ -62,13 +69,15 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('userId');
       localStorage.removeItem('userEmail');
       localStorage.removeItem('userPhone');
+      localStorage.removeItem('username');
       localStorage.removeItem('balance');
       setUserId(null);
       setUserEmail(null);
       setUserPhone(null);
+      setUsername(null);
       setBalance({ coins: 0, hints: 0 });
     }
-  }, [isAuthenticated, userId, userEmail, userPhone, fetchBalance]);
+  }, [isAuthenticated, userId, userEmail, userPhone, username, fetchBalance]);
 
   const login = (userData = {}) => {
     setIsAuthenticated(true);
@@ -80,6 +89,9 @@ export const AuthProvider = ({ children }) => {
     }
     if (userData.phone) {
       setUserPhone(userData.phone);
+    }
+    if (userData.username) {
+      setUsername(userData.username);
     }
     if (userData.balance) {
       setBalance(userData.balance);
@@ -207,6 +219,7 @@ export const AuthProvider = ({ children }) => {
       userId,
       userEmail,
       userPhone,
+      username,
       balance,
       login, 
       logout,
