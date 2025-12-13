@@ -40,7 +40,7 @@ const ProtectedRoute = ({ children, requireAuth = false }) => {
   const { isAuthenticated } = useAuth();
   
   if (requireAuth && !isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/enigma" replace />;
   }
   
   if (!requireAuth && isAuthenticated) {
@@ -96,7 +96,7 @@ const AppRoutes = () => {
         path="*" 
         element={
           <Navigate 
-            to={isAuthenticated ? "/enigma" : "/login"} 
+            to={isAuthenticated ? "/enigma" : "/enigma"} 
             replace 
           />
         } 
@@ -113,10 +113,10 @@ const App = () => {
           <PageTransition>
             <AppRoutes />
           </PageTransition>
-        </div>
+  </div>
       </ToastProvider>
     </AuthProvider>
-  );
+);
 };
 
 export default App;

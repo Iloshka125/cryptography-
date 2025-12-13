@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -6,6 +6,7 @@ import { Label } from '../components/ui/label.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Button } from '../components/ui/button.jsx';
 import { User, Mail, Phone, Lock, Award, CheckCircle2, ArrowLeft } from '../components/IconSet.jsx';
+import { getProfile, updateProfile, changePassword } from '../api/profile.js';
 
 const avatars = [
   '🎯',
@@ -28,79 +29,189 @@ const avatars = [
   '🎭',
 ];
 
-const achievements = [
-  {
-    id: 1,
-    name: 'Первый шаг',
-    description: 'Завершите свой первый уровень',
-    icon: '🎯',
-    unlocked: true,
-  },
-  {
-    id: 2,
-    name: 'Мастер шифрования',
-    description: 'Завершите 10 уровней',
-    icon: '🔐',
-    unlocked: true,
-  },
-  {
-    id: 3,
-    name: 'Легенда',
-    description: 'Завершите все уровни',
-    icon: '👑',
-    unlocked: false,
-  },
-  {
-    id: 4,
-    name: 'Быстрый ученик',
-    description: 'Завершите уровень за 5 минут',
-    icon: '⚡',
-    unlocked: false,
-  },
-  {
-    id: 5,
-    name: 'Коллекционер',
-    description: 'Соберите 100 монет',
-    icon: '🪙',
-    unlocked: true,
-  },
-  {
-    id: 6,
-    name: 'Социальный',
-    description: 'Добавьте 10 друзей',
-    icon: '👥',
-    unlocked: false,
-  },
-];
-
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { username: authUsername, logout, balance, userEmail: authUserEmail, userPhone: authUserPhone } = useAuth();
+  const { 
+    userId, 
+    userEmail: authUserEmail, 
+    userPhone: authUserPhone,
+    username: authUsername,
+    isAuthenticated,
+    logout, 
+    balance,
+    login: authLogin 
+  } = useAuth();
   
+  const [loading, setLoading] = useState(true);
+  // Инициализируем начальные значения из AuthContext (будут перезаписаны данными из БД)
   const [userAvatar, setUserAvatar] = useState('🎯');
-  const [username, setUsername] = useState(authUsername || 'CyberHacker');
-  const [userEmail, setUserEmail] = useState(authUserEmail || 'user@cybernet.com');
-  const [userPhone, setUserPhone] = useState(authUserPhone || '+7 (999) 123-45-67');
+  const [username, setUsername] = useState(authUsername || '');
+  const [userEmail, setUserEmail] = useState(authUserEmail || '');
+  const [userPhone, setUserPhone] = useState(authUserPhone || '');
+  const [userLevel, setUserLevel] = useState(1);
+  const [achievements, setAchievements] = useState([]);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
-  const handleProfileUpdate = (e) => {
-    e.preventDefault();
-    showToast('Профиль успешно обновлен!', 'success');
+  // Перенаправляем на приветственную страницу, если пользователь не авторизован
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/enigma', { replace: true });
+      return;
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Загружаем профиль при монтировании и при изменении идентификаторов пользователя
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadProfile();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, authUserEmail, authUserPhone, isAuthenticated]);
+
+  const loadProfile = async () => {
+    if (!userId && !authUserEmail && !authUserPhone) {
+      setLoading(false);
+      // Если пользователь не авторизован, перенаправляем на приветственную страницу
+      navigate('/enigma', { replace: true });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const params = userId 
+        ? { user_id: userId }
+        : (authUserEmail ? { email: authUserEmail } : { phone: authUserPhone });
+      
+      const response = await getProfile(params);
+      
+      if (response.success && response.profile) {
+        const profile = response.profile;
+        
+        // Заполняем форму данными из БД
+        setUsername(profile.nickname || '');
+        setUserEmail(profile.email || '');
+        setUserPhone(profile.phone || '');
+        setUserAvatar(profile.avatar || '🎯');
+        setUserLevel(profile.level || 1);
+        
+        // Обновляем данные в AuthContext после загрузки из БД
+        authLogin({
+          user_id: profile.id || userId,
+          email: profile.email,
+          phone: profile.phone,
+          username: profile.nickname,
+          balance: profile.balance,
+        });
+        
+        // Маппинг достижений
+        const achievementMap = {
+          1: { id: 1, name: 'Первый шаг', description: 'Завершите свой первый уровень', icon: '🎯' },
+          2: { id: 2, name: 'Мастер шифрования', description: 'Завершите 10 уровней', icon: '🔐' },
+          3: { id: 3, name: 'Легенда', description: 'Завершите все уровни', icon: '👑' },
+          4: { id: 4, name: 'Быстрый ученик', description: 'Завершите уровень за 5 минут', icon: '⚡' },
+          5: { id: 5, name: 'Коллекционер', description: 'Соберите 100 монет', icon: '🪙' },
+          6: { id: 6, name: 'Социальный', description: 'Добавьте 10 друзей', icon: '👥' },
+        };
+        
+        const mappedAchievements = (profile.achievements || []).map(a => ({
+          ...achievementMap[a.id],
+          unlocked: a.unlocked,
+        }));
+        setAchievements(mappedAchievements);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки профиля:', error);
+      showToast('Ошибка загрузки профиля', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePasswordChange = (e) => {
+  const handleProfileUpdate = async (e) => {
     e.preventDefault();
+    
+    if (!userId && !authUserEmail && !authUserPhone) {
+      showToast('Ошибка: пользователь не авторизован', 'error');
+      return;
+    }
+
+    try {
+      setUpdatingProfile(true);
+      // Создаем базовый объект с данными для обновления
+      const updateData = {
+        nickname: username,
+        email: userEmail,
+        phone: userPhone,
+        avatar: userAvatar,
+      };
+      
+      // Добавляем идентификатор пользователя (без дублирования ключей)
+      const params = userId 
+        ? { user_id: userId, ...updateData }
+        : (authUserEmail 
+          ? { email: authUserEmail, ...updateData }
+          : { phone: authUserPhone, ...updateData });
+      
+      const response = await updateProfile(params);
+      
+      if (response.success) {
+        showToast('Профиль успешно обновлен!', 'success');
+        // Обновляем данные в контексте
+        authLogin({
+          user_id: userId || response.profile.id,
+          email: response.profile.email,
+          phone: response.profile.phone,
+          username: response.profile.nickname,
+        });
+        // Перезагружаем профиль для получения актуальных данных из БД
+        await loadProfile();
+      }
+    } catch (error) {
+      showToast(error.message || 'Ошибка обновления профиля', 'error');
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    
     if (newPassword !== confirmNewPassword) {
       showToast('Новые пароли не совпадают!', 'error');
       return;
     }
-    showToast('Пароль успешно изменен!', 'success');
-    setOldPassword('');
-    setNewPassword('');
-    setConfirmNewPassword('');
+
+    if (!userId && !authUserEmail && !authUserPhone) {
+      showToast('Ошибка: пользователь не авторизован', 'error');
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      const params = userId 
+        ? { user_id: userId, old_password: oldPassword, new_password: newPassword }
+        : (authUserEmail 
+          ? { email: authUserEmail, old_password: oldPassword, new_password: newPassword }
+          : { phone: authUserPhone, old_password: oldPassword, new_password: newPassword });
+      
+      const response = await changePassword(params);
+      
+      if (response.success) {
+        showToast('Пароль успешно изменен!', 'success');
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      }
+    } catch (error) {
+      showToast(error.message || 'Ошибка изменения пароля', 'error');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const handleLogout = () => {
@@ -108,6 +219,14 @@ const ProfilePage = () => {
     showToast('Вы вышли из профиля', 'success');
     navigate('/enigma');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen page-fade-in flex items-center justify-center">
+        <div className="text-cyan-300 text-xl">Загрузка профиля...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen page-fade-in">
@@ -148,7 +267,7 @@ const ProfilePage = () => {
               <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                 <div className="px-4 py-2 bg-cyan-400/20 border border-cyan-400/50 rounded-lg">
                   <span className="text-cyan-200 text-sm">Уровень: </span>
-                  <span className="text-cyan-300 font-semibold">7</span>
+                  <span className="text-cyan-300 font-semibold">{userLevel}</span>
                 </div>
                 <div className="px-4 py-2 bg-amber-400/20 border border-amber-400/50 rounded-lg">
                   <span className="text-amber-200 text-sm">Монеты: </span>
@@ -232,9 +351,10 @@ const ProfilePage = () => {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-cyan-400 text-black hover:bg-cyan-300 shadow-[0_0_20px_rgba(0,255,255,0.5)] transition-all hover:scale-[1.02]"
+                  disabled={updatingProfile}
+                  className="w-full bg-cyan-400 text-black hover:bg-cyan-300 shadow-[0_0_20px_rgba(0,255,255,0.5)] transition-all hover:scale-[1.02] disabled:opacity-50"
                 >
-                  СОХРАНИТЬ ИЗМЕНЕНИЯ
+                  {updatingProfile ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ ИЗМЕНЕНИЯ'}
                 </Button>
               </form>
             </div>
@@ -283,9 +403,10 @@ const ProfilePage = () => {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full bg-cyan-400 text-black hover:bg-cyan-300 shadow-[0_0_20px_rgba(0,255,255,0.5)] transition-all hover:scale-[1.02]"
+                  disabled={changingPassword}
+                  className="w-full bg-cyan-400 text-black hover:bg-cyan-300 shadow-[0_0_20px_rgba(0,255,255,0.5)] transition-all hover:scale-[1.02] disabled:opacity-50"
                 >
-                  ИЗМЕНИТЬ ПАРОЛЬ
+                  {changingPassword ? 'ИЗМЕНЕНИЕ...' : 'ИЗМЕНИТЬ ПАРОЛЬ'}
                 </Button>
               </form>
             </div>
