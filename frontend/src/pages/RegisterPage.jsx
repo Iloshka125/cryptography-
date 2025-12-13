@@ -117,6 +117,7 @@ const RegisterPage = () => {
       // Устанавливаем авторизацию с данными пользователя
       authLogin({
         user_id: response.user_id,
+        username: data.nickname,
         email: data.email,
         phone: data.phone,
         balance: { coins: 1000, hints: 5 }, // Начальный баланс при регистрации

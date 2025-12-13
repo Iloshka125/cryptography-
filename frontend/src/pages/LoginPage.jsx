@@ -54,6 +54,7 @@ const LoginPage = () => {
       // Устанавливаем авторизацию с данными пользователя
       authLogin({
         user_id: response.user_id,
+        username: response.nickname,
         email: credentials.email,
         phone: credentials.phone,
         balance: response.balance,

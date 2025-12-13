@@ -1,8 +1,10 @@
 const express = require('express');
 const authRoutes = require('./routes/auth');
 const balanceRoutes = require('./routes/balance');
+const profileRoutes = require('./routes/profile');
 const createUsersTable = require('./migrations/createUsersTable');
 const createUserBalanceTable = require('./migrations/createUserBalanceTable');
+const addProfileFields = require('./migrations/addProfileFields');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,10 +26,12 @@ app.use((req, res, next) => {
 // Создание таблиц при старте
 createUsersTable();
 createUserBalanceTable();
+addProfileFields();
 
 // Маршруты
 app.use('/auth', authRoutes);
 app.use('/balance', balanceRoutes);
+app.use('/profile', profileRoutes);
 
 // 404
 app.use('*', (req, res) => {

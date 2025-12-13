@@ -25,16 +25,16 @@ export const CategoriesGrid = ({ categories, onSelect }) => (
               {category.description}
             </p>
             <div className="mt-auto pt-4 space-y-4">
-              <div className="flex items-center justify-center gap-2 text-cyan-200 text-sm">
-                <Trophy className="w-4 h-4" />
-                <span>
-                  {category.levels.filter((l) => l.completed).length} /{' '}
-                  {category.levels.length} завершено
-                </span>
-              </div>
+            <div className="flex items-center justify-center gap-2 text-cyan-200 text-sm">
+              <Trophy className="w-4 h-4" />
+              <span>
+                {category.levels.filter((l) => l.completed).length} /{' '}
+                {category.levels.length} завершено
+              </span>
+            </div>
               <Button className="w-full bg-cyan-400 text-black hover:bg-cyan-300 shadow-[0_0_15px_rgba(0,255,255,0.4)] transition-all">
-                ВЫБРАТЬ
-              </Button>
+              ВЫБРАТЬ
+            </Button>
             </div>
           </div>
         </div>
@@ -113,7 +113,7 @@ export const CategoryLevels = ({
       ))}
     </div>
   </div>
-  );
+);
 };
 
 CategoryLevels.propTypes = {

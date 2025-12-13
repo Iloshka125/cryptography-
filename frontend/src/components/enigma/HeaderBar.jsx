@@ -53,7 +53,7 @@ const HeaderBar = ({
               : 'bg-transparent border border-cyan-400 text-cyan-200'
           }`}
         >
-          <Grid3x3 className="w-4 h-4" />
+            <Grid3x3 className="w-4 h-4" />
           <span>КАТЕГОРИИ</span>
         </Button>
         <Button
@@ -64,7 +64,7 @@ const HeaderBar = ({
               : 'bg-transparent border border-cyan-400 text-cyan-200'
           }`}
         >
-          <Star className="w-4 h-4" />
+            <Star className="w-4 h-4" />
           <span>BATTLE PASS</span>
         </Button>
         <Button
@@ -75,7 +75,7 @@ const HeaderBar = ({
               : 'bg-transparent border border-cyan-400 text-cyan-200'
           }`}
         >
-          <Medal className="w-4 h-4" />
+            <Medal className="w-4 h-4" />
           <span>LEADERBOARD</span>
         </Button>
         <Button
@@ -103,7 +103,7 @@ const HeaderBar = ({
       </div>
     </div>
   </header>
-  );
+);
 };
 
 HeaderBar.propTypes = {
