@@ -36,6 +36,11 @@ export const Mail = createIcon('✉️');
 export const Crown = createIcon('👑');
 export const ArrowLeft = createIcon('←');
 export const Clock = createIcon('⏰');
+export const Plus = createIcon('➕');
+export const X = createIcon('❌');
+export const Trash2 = createIcon('🗑️');
+export const Edit2 = createIcon('✏️');
+export const Save = createIcon('💾');
 
 // A simple star icon with outline for leaderboard maybe, reuse Star if needed.
 
