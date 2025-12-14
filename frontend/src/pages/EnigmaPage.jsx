@@ -12,6 +12,7 @@ import LeaderboardSection from '../components/enigma/LeaderboardSection.jsx';
 import CompetitionsSection from '../components/enigma/CompetitionsSection.jsx';
 import VersusSection from '../components/enigma/VersusSection.jsx';
 import { getProfile } from '../api/profile.js';
+import { getCategories } from '../api/categories.js';
 
 const EnigmaPage = () => {
   const { showToast } = useToast();
@@ -31,6 +32,8 @@ const EnigmaPage = () => {
   const [username, setUsername] = useState('');
   const [userAvatar, setUserAvatar] = useState('🎯');
   const [userLevel, setUserLevel] = useState(1);
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   // Загружаем профиль и баланс при монтировании и изменении идентификаторов
   useEffect(() => {
@@ -40,6 +43,43 @@ const EnigmaPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, authUserEmail, authUserPhone, fetchBalance]);
+
+  // Загружаем категории из БД
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      const response = await getCategories();
+      if (response.success && response.categories) {
+        // Преобразуем данные из БД в формат, ожидаемый компонентами
+        const formattedCategories = response.categories.map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          description: cat.description || '',
+          icon: cat.icon || '🔐',
+          color: cat.color || '#00ffff',
+          levels: (cat.levels || []).map(level => ({
+            id: level.id,
+            name: level.name,
+            description: level.description || '',
+            completed: false, // TODO: загрузить прогресс пользователя
+            locked: false, // TODO: определить логику блокировки
+          })),
+        }));
+        setCategories(formattedCategories);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки категорий:', error);
+      showToast('Ошибка загрузки категорий', 'error');
+      // В случае ошибки используем пустой массив
+      setCategories([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
 
   const loadUserProfile = async () => {
     if (!userId && !authUserEmail && !authUserPhone) return;
@@ -62,56 +102,6 @@ const EnigmaPage = () => {
     }
   };
 
-  const categories = useMemo(
-    () => [
-      {
-        id: 'symmetric',
-        name: 'Симметричное шифрование',
-        description:
-          'Изучите алгоритмы AES, DES и другие методы симметричной криптографии',
-        icon: '🔐',
-        color: '#00ffff',
-        levels: [
-          { id: 1, name: 'Основы симметричного шифрования', completed: true, locked: false },
-          { id: 2, name: 'Алгоритм Caesar Cipher', completed: true, locked: false },
-          { id: 3, name: 'DES: Data Encryption Standard', completed: false, locked: false },
-          { id: 4, name: 'AES: Advanced Encryption Standard', completed: false, locked: true },
-          { id: 5, name: 'Режимы работы блочных шифров', completed: false, locked: true },
-        ],
-      },
-      {
-        id: 'asymmetric',
-        name: 'Асимметричное шифрование',
-        description:
-          'Освойте RSA, ECC и принципы публичного и приватного ключей',
-        icon: '🔑',
-        color: '#00d4ff',
-        levels: [
-          { id: 1, name: 'Введение в асимметричную криптографию', completed: false, locked: false },
-          { id: 2, name: 'Математические основы RSA', completed: false, locked: false },
-          { id: 3, name: 'Реализация алгоритма RSA', completed: false, locked: true },
-          { id: 4, name: 'Эллиптические кривые (ECC)', completed: false, locked: true },
-          { id: 5, name: 'Diffie-Hellman обмен ключами', completed: false, locked: true },
-        ],
-      },
-      {
-        id: 'hashing',
-        name: 'Хеширование и подписи',
-        description:
-          'Погрузитесь в мир хеш-функций, SHA, MD5 и цифровых подписей',
-        icon: '🔏',
-        color: '#5ec8d8',
-        levels: [
-          { id: 1, name: 'Основы хеш-функций', completed: false, locked: false },
-          { id: 2, name: 'MD5 и его уязвимости', completed: false, locked: false },
-          { id: 3, name: 'Семейство SHA: SHA-1, SHA-256', completed: false, locked: false },
-          { id: 4, name: 'Цифровые подписи', completed: false, locked: true },
-          { id: 5, name: 'HMAC и аутентификация', completed: false, locked: true },
-        ],
-      },
-    ],
-    [],
-  );
 
   const leaderboardData = useMemo(() => [
     { rank: 1, username: 'CryptoMaster', score: 15420, avatar: '👑', level: 10 },

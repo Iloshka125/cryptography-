@@ -2,10 +2,12 @@ const express = require('express');
 const authRoutes = require('./routes/auth');
 const balanceRoutes = require('./routes/balance');
 const profileRoutes = require('./routes/profile');
+const categoriesRoutes = require('./routes/categories');
 const createUsersTable = require('./migrations/createUsersTable');
 const createUserBalanceTable = require('./migrations/createUserBalanceTable');
 const addProfileFields = require('./migrations/addProfileFields');
 const addAdminField = require('./migrations/addAdminField');
+const createCategoriesAndLevelsTables = require('./migrations/createCategoriesAndLevelsTables');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,11 +31,13 @@ createUsersTable();
 createUserBalanceTable();
 addProfileFields();
 addAdminField();
+createCategoriesAndLevelsTables();
 
 // Маршруты
 app.use('/auth', authRoutes);
 app.use('/balance', balanceRoutes);
 app.use('/profile', profileRoutes);
+app.use('/categories', categoriesRoutes);
 
 // 404
 app.use('*', (req, res) => {
