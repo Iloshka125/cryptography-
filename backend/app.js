@@ -3,12 +3,16 @@ const authRoutes = require('./routes/auth');
 const balanceRoutes = require('./routes/balance');
 const profileRoutes = require('./routes/profile');
 const categoriesRoutes = require('./routes/categories');
+const battlepassRoutes = require('./routes/battlepass');
 const createUsersTable = require('./migrations/createUsersTable');
 const createUserBalanceTable = require('./migrations/createUserBalanceTable');
 const addProfileFields = require('./migrations/addProfileFields');
 const addAdminField = require('./migrations/addAdminField');
 const createCategoriesAndLevelsTables = require('./migrations/createCategoriesAndLevelsTables');
-const addLevelStatsFields = require('./migrations/addLevelStatsFields');
+const addLevelFields = require('./migrations/addLevelFields');
+const createBattlePassTable = require('./migrations/createBattlePassTable');
+const createUserBattlePassTable = require('./migrations/createUserBattlePassTable');
+const removeExperienceFromBattlePass = require('./migrations/removeExperienceFromBattlePass');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,13 +37,17 @@ createUserBalanceTable();
 addProfileFields();
 addAdminField();
 createCategoriesAndLevelsTables();
-addLevelStatsFields();
+addLevelFields();
+createBattlePassTable();
+createUserBattlePassTable();
+removeExperienceFromBattlePass();
 
 // Маршруты
 app.use('/auth', authRoutes);
 app.use('/balance', balanceRoutes);
 app.use('/profile', profileRoutes);
 app.use('/categories', categoriesRoutes);
+app.use('/battlepass', battlepassRoutes);
 
 // 404
 app.use('*', (req, res) => {

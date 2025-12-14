@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { CheckCircle2, Lock, Crown } from '../IconSet.jsx';
 
-const BattlePassSection = ({ rewards, userLevel = 7, showToast }) => {
+const BattlePassSection = ({ rewards, userLevel = 7, showToast, onClaimReward }) => {
   const totalLevels = 10;
   const progress = (userLevel / totalLevels) * 100;
 
@@ -29,7 +29,7 @@ const BattlePassSection = ({ rewards, userLevel = 7, showToast }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
       {rewards.map((reward) => (
         <div
-          key={reward.level}
+          key={reward.id || reward.level}
             className={`p-4 border-2 rounded-lg text-center transition-all ${
             reward.unlocked
                 ? reward.claimed
@@ -46,7 +46,11 @@ const BattlePassSection = ({ rewards, userLevel = 7, showToast }) => {
             {reward.unlocked && !reward.claimed && (
               <button
                 onClick={() => {
-                  showToast?.(`Получена награда: ${reward.reward}`, 'success');
+                  if (onClaimReward) {
+                    onClaimReward(reward);
+                  } else {
+                    showToast?.(`Получена награда: ${reward.reward}`, 'success');
+                  }
                 }}
                 className="w-full bg-amber-300 text-black hover:bg-amber-200 transition-all py-2 rounded text-sm font-semibold"
               >
@@ -64,6 +68,7 @@ BattlePassSection.propTypes = {
   rewards: PropTypes.array.isRequired,
   userLevel: PropTypes.number,
   showToast: PropTypes.func,
+  onClaimReward: PropTypes.func,
 };
 
 export default BattlePassSection;

@@ -13,12 +13,14 @@ import CompetitionsSection from '../components/enigma/CompetitionsSection.jsx';
 import VersusSection from '../components/enigma/VersusSection.jsx';
 import { getProfile } from '../api/profile.js';
 import { getCategories } from '../api/categories.js';
+import { getBattlePassRewards, claimBattlePassReward } from '../api/battlepass.js';
 
 const EnigmaPage = () => {
   const { showToast } = useToast();
   const { 
     balance, 
     subtractCoins, 
+    addCoins,
     addHints,
     fetchBalance,
     userId,
@@ -34,6 +36,7 @@ const EnigmaPage = () => {
   const [userLevel, setUserLevel] = useState(1);
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [battlePassRewards, setBattlePassRewards] = useState([]);
 
   // Загружаем профиль и баланс при монтировании и изменении идентификаторов
   useEffect(() => {
@@ -47,7 +50,33 @@ const EnigmaPage = () => {
   // Загружаем категории из БД
   useEffect(() => {
     loadCategories();
-  }, []);
+    if (userId) {
+      loadBattlePassRewards();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  const loadBattlePassRewards = async () => {
+    if (!userId) return;
+    
+    try {
+      const response = await getBattlePassRewards(userId);
+      if (response.success && response.rewards) {
+        // Преобразуем данные из БД в формат, ожидаемый компонентом
+        const formattedRewards = response.rewards.map(reward => ({
+          id: reward.id,
+          level: reward.level,
+          reward: reward.reward,
+          unlocked: userLevel >= reward.level,
+          claimed: reward.claimed || false,
+        }));
+        setBattlePassRewards(formattedRewards);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки наград Battle Pass:', error);
+      setBattlePassRewards([]);
+    }
+  };
 
   const loadCategories = async () => {
     try {
@@ -95,12 +124,51 @@ const EnigmaPage = () => {
         const profile = response.profile;
         setUsername(profile.nickname || '');
         setUserAvatar(profile.avatar || '🎯');
-        setUserLevel(profile.level || 1);
+        const newLevel = profile.level || 1;
+        setUserLevel(newLevel);
       }
     } catch (error) {
       console.error('Ошибка загрузки профиля:', error);
     }
   };
+
+  const handleClaimReward = async (reward) => {
+    if (!userId) {
+      showToast('Ошибка: пользователь не авторизован', 'error');
+      return;
+    }
+
+    try {
+      const response = await claimBattlePassReward(reward.id, userId);
+      if (response.success) {
+        showToast(
+          response.coinsAdded > 0 
+            ? `Награда получена! Зачислено ${response.coinsAdded} монет`
+            : 'Награда получена!',
+          'success'
+        );
+        
+        // Обновляем баланс, если были зачислены монеты
+        if (response.coinsAdded > 0) {
+          await fetchBalance();
+        }
+        
+        // Обновляем список наград
+        await loadBattlePassRewards();
+      }
+    } catch (error) {
+      console.error('Ошибка получения награды:', error);
+      showToast(error.message || 'Ошибка при получении награды', 'error');
+    }
+  };
+
+  // Обновляем статус разблокировки наград при изменении уровня пользователя
+  useEffect(() => {
+    if (userLevel && userId) {
+      loadBattlePassRewards();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLevel]);
 
 
   const leaderboardData = useMemo(() => [
@@ -112,18 +180,6 @@ const EnigmaPage = () => {
   ], [username, userAvatar, userLevel]);
 
 
-  const battlePassRewards = [
-    { level: 1, reward: '100 монет', unlocked: true, claimed: true },
-    { level: 2, reward: '5 подсказок', unlocked: true, claimed: true },
-    { level: 3, reward: 'Скин "Неон"', unlocked: true, claimed: false },
-    { level: 4, reward: '250 монет', unlocked: true, claimed: false },
-    { level: 5, reward: 'Уникальный аватар', unlocked: false, claimed: false },
-    { level: 6, reward: '500 монет', unlocked: false, claimed: false },
-    { level: 7, reward: 'Уникальный значок 👑', unlocked: false, claimed: false },
-    { level: 8, reward: '10 подсказок', unlocked: false, claimed: false },
-    { level: 9, reward: '1000 монет', unlocked: false, claimed: false },
-    { level: 10, reward: 'Легендарный аватар 🌟', unlocked: false, claimed: false },
-  ];
 
   const shopItems = [
     { id: 1, name: '100 монет', price: 1.99, type: 'currency', icon: '💎' },
@@ -196,7 +252,12 @@ const EnigmaPage = () => {
 
           {currentSection === 'battlepass' && (
             <div className="slide-panel">
-              <BattlePassSection rewards={battlePassRewards} userLevel={userLevel} showToast={showToast} />
+              <BattlePassSection 
+                rewards={battlePassRewards} 
+                userLevel={userLevel} 
+                showToast={showToast}
+                onClaimReward={handleClaimReward}
+              />
             </div>
           )}
 

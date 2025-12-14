@@ -13,9 +13,15 @@ import {
   updateCategory,
   deleteCategory, 
   createLevel,
-  updateLevel, 
+  updateLevel,
   deleteLevel 
 } from '../api/categories.js';
+import {
+  getBattlePassRewards,
+  createBattlePassReward,
+  updateBattlePassReward,
+  deleteBattlePassReward,
+} from '../api/battlepass.js';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -36,6 +42,7 @@ const AdminPage = () => {
 
   // Состояние для уровней
   const [isLevelModalOpen, setIsLevelModalOpen] = useState(false);
+  const [editingLevel, setEditingLevel] = useState(null);
   const [levelForm, setLevelForm] = useState({
     name: '',
     description: '',
@@ -46,8 +53,18 @@ const AdminPage = () => {
     points: 100,
     estimatedTime: '15 мин',
   });
+  
+  // Состояние для редактирования категории
   const [editingCategory, setEditingCategory] = useState(null);
-  const [editingLevel, setEditingLevel] = useState(null);
+
+  // Состояние для Battle Pass
+  const [battlePassRewards, setBattlePassRewards] = useState([]);
+  const [isBattlePassModalOpen, setIsBattlePassModalOpen] = useState(false);
+  const [editingBattlePassReward, setEditingBattlePassReward] = useState(null);
+  const [battlePassForm, setBattlePassForm] = useState({
+    level: '',
+    reward: '',
+  });
 
   // Если пользователь не админ, редирект (это также обрабатывается в AdminRoute, но на всякий случай)
   if (!isAdmin) {
@@ -57,7 +74,20 @@ const AdminPage = () => {
   // Загружаем категории при монтировании
   useEffect(() => {
     loadCategories();
+    loadBattlePassRewards();
   }, []);
+
+  const loadBattlePassRewards = async () => {
+    try {
+      const response = await getBattlePassRewards();
+      if (response.success && response.rewards) {
+        setBattlePassRewards(response.rewards);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки наград Battle Pass:', error);
+      showToast('Ошибка загрузки наград Battle Pass', 'error');
+    }
+  };
 
   // Обновляем выбранную категорию после загрузки категорий
   useEffect(() => {
@@ -85,29 +115,40 @@ const AdminPage = () => {
     }
   };
 
+
+  const handleCategoryEdit = (category) => {
+    setEditingCategory(category);
+    setCategoryForm({
+      name: category.name,
+      description: category.description || '',
+      icon: category.icon || '🔐',
+      color: category.color || '#00ffff',
+    });
+    setIsCategoryModalOpen(true);
+  };
+
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
     try {
-      let response;
       if (editingCategory) {
-        // Редактирование существующей категории
-        response = await updateCategory(editingCategory.id, categoryForm);
+        // Редактирование категории
+        const response = await updateCategory(editingCategory.id, categoryForm);
         if (response.success) {
-          showToast('Категория обновлена!', 'success');
+          setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
           setEditingCategory(null);
+          setIsCategoryModalOpen(false);
+          showToast('Категория обновлена!', 'success');
+          await loadCategories();
         }
       } else {
-        // Создание новой категории
-        response = await createCategory(categoryForm);
+        // Создание категории
+        const response = await createCategory(categoryForm);
         if (response.success) {
+          setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
+          setIsCategoryModalOpen(false);
           showToast('Категория создана!', 'success');
+          await loadCategories();
         }
-      }
-      
-      if (response.success) {
-        setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
-        setIsCategoryModalOpen(false);
-        await loadCategories(); // Перезагружаем категории
       }
     } catch (error) {
       console.error('Ошибка сохранения категории:', error);
@@ -115,50 +156,66 @@ const AdminPage = () => {
     }
   };
 
+  const handleLevelEdit = (level) => {
+    setEditingLevel(level);
+    setLevelForm({
+      name: level.name,
+      description: level.description || '',
+      task: level.task || '',
+      flag: level.flag || '',
+      categoryId: selectedCategory.id,
+      difficulty: level.difficulty || 'medium',
+      points: level.points || 100,
+      estimatedTime: level.estimated_time || '15 мин',
+    });
+    setIsLevelModalOpen(true);
+  };
+
   const handleLevelSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedCategory && !editingLevel) {
+    if (!selectedCategory) {
       showToast('Выберите категорию', 'error');
       return;
     }
 
     try {
-      let response;
       if (editingLevel) {
-        // Редактирование существующего уровня
-        response = await updateLevel(editingLevel.id, {
+        // Редактирование уровня
+        const response = await updateLevel(editingLevel.id, {
           name: levelForm.name,
           description: levelForm.description,
           task: levelForm.task,
           flag: levelForm.flag,
           difficulty: levelForm.difficulty,
-          points: levelForm.points,
+          points: parseInt(levelForm.points),
           estimatedTime: levelForm.estimatedTime,
         });
+        
         if (response.success) {
-          showToast('Уровень обновлен!', 'success');
+          setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
           setEditingLevel(null);
+          setIsLevelModalOpen(false);
+          showToast('Уровень обновлен!', 'success');
+          await loadCategories();
         }
       } else {
-        // Создание нового уровня
-        response = await createLevel(selectedCategory.id, {
+        // Создание уровня
+        const response = await createLevel(selectedCategory.id, {
           name: levelForm.name,
           description: levelForm.description,
           task: levelForm.task,
           flag: levelForm.flag,
           difficulty: levelForm.difficulty,
-          points: levelForm.points,
+          points: parseInt(levelForm.points),
           estimatedTime: levelForm.estimatedTime,
         });
+        
         if (response.success) {
+          setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
+          setIsLevelModalOpen(false);
           showToast('Уровень создан!', 'success');
+          await loadCategories();
         }
-      }
-      
-      if (response.success) {
-        setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
-        setIsLevelModalOpen(false);
-        await loadCategories(); // Перезагружаем категории с новым уровнем
       }
     } catch (error) {
       console.error('Ошибка сохранения уровня:', error);
@@ -199,6 +256,56 @@ const AdminPage = () => {
     }
   };
 
+  const handleBattlePassRewardSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingBattlePassReward) {
+        // Редактирование награды
+        const response = await updateBattlePassReward(editingBattlePassReward.id, {
+          level: parseInt(battlePassForm.level),
+          reward: battlePassForm.reward,
+        });
+        if (response.success) {
+          setBattlePassForm({ level: '', reward: '' });
+          setEditingBattlePassReward(null);
+          setIsBattlePassModalOpen(false);
+          showToast('Награда обновлена!', 'success');
+          await loadBattlePassRewards();
+        }
+      } else {
+        // Создание награды
+        const response = await createBattlePassReward({
+          level: parseInt(battlePassForm.level),
+          reward: battlePassForm.reward,
+        });
+        if (response.success) {
+          setBattlePassForm({ level: '', reward: '' });
+          setIsBattlePassModalOpen(false);
+          showToast('Награда создана!', 'success');
+          await loadBattlePassRewards();
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения награды:', error);
+      showToast(error.message || 'Ошибка сохранения награды', 'error');
+    }
+  };
+
+  const handleDeleteBattlePassReward = async (rewardId) => {
+    if (window.confirm('Вы уверены, что хотите удалить эту награду?')) {
+      try {
+        const response = await deleteBattlePassReward(rewardId);
+        if (response.success) {
+          showToast('Награда удалена', 'success');
+          await loadBattlePassRewards();
+        }
+      } catch (error) {
+        console.error('Ошибка удаления награды:', error);
+        showToast(error.message || 'Ошибка удаления награды', 'error');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen page-fade-in">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -216,6 +323,66 @@ const AdminPage = () => {
           </h1>
         </div>
 
+        {/* Секция Battle Pass */}
+        <div className="mb-8">
+          <div className="p-6 border-2 border-cyan-400/30 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_20px_rgba(0,255,255,0.2)] backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl text-cyan-300">Battle Pass - Награды</h2>
+              <Button
+                  onClick={() => {
+                  setEditingBattlePassReward(null);
+                  setBattlePassForm({ level: '', reward: '' });
+                  setIsBattlePassModalOpen(true);
+                }}
+                className="bg-cyan-400 text-black hover:bg-cyan-300"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Создать награду
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {battlePassRewards.map((reward) => (
+                <div
+                  key={reward.id}
+                  className="p-4 border-2 border-cyan-400/30 rounded-lg"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-cyan-200 font-semibold">Уровень {reward.level}</h3>
+                      <p className="text-cyan-200/70 text-sm">{reward.reward}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          setEditingBattlePassReward(reward);
+                          setBattlePassForm({
+                            level: reward.level,
+                            reward: reward.reward,
+                          });
+                          setIsBattlePassModalOpen(true);
+                        }}
+                        className="bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/50"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteBattlePassReward(reward.id)}
+                        className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {battlePassRewards.length === 0 && (
+                <p className="text-cyan-200/50 text-center py-8 col-span-full">Нет наград</p>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Категории */}
           <div className="space-y-6">
@@ -223,11 +390,7 @@ const AdminPage = () => {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl text-cyan-300">Категории</h2>
                 <Button
-                  onClick={() => {
-                    setEditingCategory(null);
-                    setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
-                    setIsCategoryModalOpen(true);
-                  }}
+                  onClick={() => setIsCategoryModalOpen(true)}
                   className="bg-cyan-400 text-black hover:bg-cyan-300"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -257,15 +420,26 @@ const AdminPage = () => {
                           </p>
                         </div>
                       </div>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteCategory(category.id);
-                        }}
-                        className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCategoryEdit(category);
+                          }}
+                          className="bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/50"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCategory(category.id);
+                          }}
+                          className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -312,25 +486,17 @@ const AdminPage = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-cyan-200 font-semibold">{level.name}</h3>
-                          <p className="text-cyan-200/70 text-sm">{level.description}</p>
+                          <p className="text-cyan-200/70 text-sm">{level.description || 'Без описания'}</p>
+                          <div className="flex gap-3 mt-2 text-xs text-cyan-200/60">
+                            <span>Сложность: {level.difficulty === 'easy' ? 'Легкая' : level.difficulty === 'hard' ? 'Сложная' : 'Средняя'}</span>
+                            <span>Очки: {level.points || 100}</span>
+                            <span>Время: {level.estimated_time || '15 мин'}</span>
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           <Button
-                            onClick={() => {
-                              setEditingLevel(level);
-                              setLevelForm({
-                                name: level.name,
-                                description: level.description || '',
-                                task: level.task || '',
-                                flag: level.flag || '',
-                                categoryId: level.categoryId || selectedCategory.id,
-                                difficulty: level.difficulty || 'medium',
-                                points: level.points || 100,
-                                estimatedTime: level.estimated_time || level.estimatedTime || '15 мин',
-                              });
-                              setIsLevelModalOpen(true);
-                            }}
-                            className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-400/50"
+                            onClick={() => handleLevelEdit(level)}
+                            className="bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/50"
                           >
                             <Edit2 className="w-4 h-4" />
                           </Button>
@@ -414,7 +580,7 @@ const AdminPage = () => {
                   />
                 </div>
                 <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
-                  {editingCategory ? 'Сохранить' : 'Создать'}
+                  Создать
                 </Button>
               </form>
             </div>
@@ -478,7 +644,7 @@ const AdminPage = () => {
                   <select
                     value={levelForm.difficulty}
                     onChange={(e) => setLevelForm({ ...levelForm, difficulty: e.target.value })}
-                    className="w-full border border-cyan-400/60 bg-[#0a0a0f] text-cyan-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400/70 focus:border-cyan-400"
+                    className="w-full border border-cyan-400/60 bg-[#0a0a0f] text-cyan-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400/70"
                     required
                   >
                     <option value="easy">Легкая</option>
@@ -491,13 +657,13 @@ const AdminPage = () => {
                   <Input
                     type="number"
                     value={levelForm.points}
-                    onChange={(e) => setLevelForm({ ...levelForm, points: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setLevelForm({ ...levelForm, points: e.target.value })}
                     min="1"
                     required
                   />
                 </div>
                 <div>
-                  <Label className="text-cyan-200">Примерное время</Label>
+                  <Label className="text-cyan-200">Время выполнения</Label>
                   <Input
                     value={levelForm.estimatedTime}
                     onChange={(e) => setLevelForm({ ...levelForm, estimatedTime: e.target.value })}
@@ -506,7 +672,54 @@ const AdminPage = () => {
                   />
                 </div>
                 <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
-                  {editingLevel ? 'Сохранить' : 'Создать'}
+                  {editingLevel ? 'Сохранить изменения' : 'Создать'}
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Модальное окно создания/редактирования награды Battle Pass */}
+        {isBattlePassModalOpen && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl text-cyan-300">
+                  {editingBattlePassReward ? 'Редактировать награду' : 'Создать награду'}
+                </h3>
+                <Button
+                  onClick={() => {
+                    setIsBattlePassModalOpen(false);
+                    setEditingBattlePassReward(null);
+                    setBattlePassForm({ level: '', reward: '' });
+                  }}
+                  className="bg-transparent hover:bg-red-500/20 text-red-400"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <form onSubmit={handleBattlePassRewardSubmit} className="space-y-4">
+                <div>
+                  <Label className="text-cyan-200">Уровень</Label>
+                  <Input
+                    type="number"
+                    value={battlePassForm.level}
+                    onChange={(e) => setBattlePassForm({ ...battlePassForm, level: e.target.value })}
+                    min="1"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Награда</Label>
+                  <Input
+                    value={battlePassForm.reward}
+                    onChange={(e) => setBattlePassForm({ ...battlePassForm, reward: e.target.value })}
+                    placeholder="100 монет"
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
+                  {editingBattlePassReward ? 'Сохранить изменения' : 'Создать'}
                 </Button>
               </form>
             </div>

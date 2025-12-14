@@ -31,17 +31,17 @@ router.get('/levels/:id', async (req, res) => {
     // Не возвращаем флаг для безопасности
     const { flag, ...levelWithoutFlag } = level;
     
-    // Преобразуем названия полей для фронтенда
+    // Форматируем данные для фронтенда
     const formattedLevel = {
-      id: level.id,
-      categoryId: level.category_id,
-      name: level.name,
-      description: level.description,
-      task: level.task,
-      orderIndex: level.order_index,
-      difficulty: level.difficulty,
-      points: level.points,
-      estimatedTime: level.estimated_time,
+      id: levelWithoutFlag.id,
+      categoryId: levelWithoutFlag.category_id,
+      name: levelWithoutFlag.name,
+      description: levelWithoutFlag.description,
+      task: levelWithoutFlag.task,
+      orderIndex: levelWithoutFlag.order_index,
+      difficulty: levelWithoutFlag.difficulty,
+      points: levelWithoutFlag.points,
+      estimatedTime: levelWithoutFlag.estimated_time,
     };
     
     res.json({
