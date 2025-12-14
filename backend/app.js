@@ -8,6 +8,7 @@ const createUserBalanceTable = require('./migrations/createUserBalanceTable');
 const addProfileFields = require('./migrations/addProfileFields');
 const addAdminField = require('./migrations/addAdminField');
 const createCategoriesAndLevelsTables = require('./migrations/createCategoriesAndLevelsTables');
+const addLevelStatsFields = require('./migrations/addLevelStatsFields');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ createUserBalanceTable();
 addProfileFields();
 addAdminField();
 createCategoriesAndLevelsTables();
+addLevelStatsFields();
 
 // Маршруты
 app.use('/auth', authRoutes);

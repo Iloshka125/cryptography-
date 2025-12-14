@@ -1,61 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { ArrowLeft, CheckCircle2, Lock, Code, Target, Zap } from '../components/IconSet.jsx';
 import Button from '../components/ui/button.jsx';
 import { Input } from '../components/ui/input.jsx';
-
-// Mock data - в реальном приложении это будет приходить из API
-const levelData = {
-  symmetric: {
-    1: {
-      name: 'Основы симметричного шифрования',
-      description: 'Изучите основы симметричного шифрования. В этом задании вам нужно расшифровать сообщение, зашифрованное простым шифром подстановки. Найдите ключ и расшифруйте текст.',
-      task: 'Вам дано зашифрованное сообщение: "XLI QIQXMRK GSQTPIW". Используя шифр Цезаря со сдвигом 4, расшифруйте сообщение и найдите флаг.',
-      flag: 'ENIGMA{THE_ANSWER_IS_HERE}',
-    },
-    2: {
-      name: 'Алгоритм Caesar Cipher',
-      description: 'Погрузитесь в классический шифр Цезаря. Понимание этого алгоритма - основа криптографии.',
-      task: 'Расшифруйте сообщение "KHOOR ZRUOG" используя шифр Цезаря. Найдите правильный сдвиг и извлеките флаг.',
-      flag: 'ENIGMA{CAESAR_WAS_RIGHT}',
-    },
-    3: {
-      name: 'DES: Data Encryption Standard',
-      description: 'Изучите алгоритм DES - один из первых стандартов шифрования данных.',
-      task: 'Проанализируйте зашифрованные данные и найдите уязвимость в реализации DES.',
-      flag: 'ENIGMA{DES_IS_WEAK}',
-    },
-  },
-  asymmetric: {
-    1: {
-      name: 'Введение в асимметричную криптографию',
-      description: 'Познакомьтесь с концепцией публичных и приватных ключей.',
-      task: 'Используя предоставленный публичный ключ, зашифруйте сообщение и найдите флаг.',
-      flag: 'ENIGMA{PUBLIC_KEY_CRYPTO}',
-    },
-    2: {
-      name: 'Математические основы RSA',
-      description: 'Изучите математические принципы, лежащие в основе алгоритма RSA.',
-      task: 'Решите криптографическую задачу, используя факторизацию простых чисел.',
-      flag: 'ENIGMA{RSA_MATH_IS_HARD}',
-    },
-  },
-  hashing: {
-    1: {
-      name: 'Основы хеш-функций',
-      description: 'Познакомьтесь с концепцией хеширования и его применением в криптографии.',
-      task: 'Найдите коллизию в простой хеш-функции и извлеките флаг.',
-      flag: 'ENIGMA{HASH_COLLISION}',
-    },
-    2: {
-      name: 'MD5 и его уязвимости',
-      description: 'Изучите алгоритм MD5 и почему он больше не считается безопасным.',
-      task: 'Используя уязвимости MD5, найдите оригинальное сообщение из хеша.',
-      flag: 'ENIGMA{MD5_IS_BROKEN}',
-    },
-  },
-};
+import { getLevelById, checkLevelFlag } from '../api/categories.js';
 
 const LevelPage = () => {
   const { categoryId, levelId } = useParams();
@@ -63,12 +12,30 @@ const LevelPage = () => {
   const { showToast } = useToast();
   const [flag, setFlag] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [level, setLevel] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const level = useMemo(() => {
-    const category = levelData[categoryId];
-    if (!category) return null;
-    return category[parseInt(levelId, 10)];
-  }, [categoryId, levelId]);
+  // Загружаем данные уровня из БД
+  useEffect(() => {
+    loadLevel();
+  }, [levelId]);
+
+  const loadLevel = async () => {
+    try {
+      setLoading(true);
+      const response = await getLevelById(levelId);
+      if (response.success && response.level) {
+        setLevel(response.level);
+      } else {
+        showToast('Уровень не найден', 'error');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки уровня:', error);
+      showToast('Ошибка загрузки уровня', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,19 +54,36 @@ const LevelPage = () => {
 
     setIsSubmitting(true);
 
-    // Имитация проверки флага
-    setTimeout(() => {
-      if (flag.trim().toUpperCase() === level?.flag.toUpperCase()) {
-        showToast('Правильный флаг! Уровень пройден!', 'success');
-        setTimeout(() => {
-          navigate(`/enigma`);
-        }, 1500);
-      } else {
-        showToast('Неверный флаг. Попробуйте еще раз.', 'error');
-        setIsSubmitting(false);
+    try {
+      const response = await checkLevelFlag(levelId, flag);
+      if (response.success) {
+        if (response.correct) {
+          showToast(response.message || 'Правильный флаг! Уровень пройден!', 'success');
+          setTimeout(() => {
+            navigate(`/enigma`);
+          }, 1500);
+        } else {
+          showToast(response.message || 'Неверный флаг. Попробуйте еще раз.', 'error');
+          setIsSubmitting(false);
+        }
       }
-    }, 500);
+    } catch (error) {
+      console.error('Ошибка проверки флага:', error);
+      showToast(error.message || 'Ошибка при проверке флага', 'error');
+      setIsSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen page-fade-in flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h1 className="text-3xl text-cyan-300">Загрузка уровня...</h1>
+        </div>
+      </div>
+    );
+  }
 
   if (!level) {
     return (
@@ -168,7 +152,7 @@ const LevelPage = () => {
               </h2>
             </div>
             <p className="text-cyan-200 text-lg leading-relaxed">
-              {level.description}
+              {level.description || 'Описание отсутствует'}
             </p>
           </div>
 
@@ -178,15 +162,17 @@ const LevelPage = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-cyan-400/10 rounded-lg border border-cyan-400/20">
                 <span className="text-cyan-200 text-sm">Сложность</span>
-                <span className="text-cyan-300 font-semibold">Средняя</span>
+                <span className="text-cyan-300 font-semibold">
+                  {level.difficulty === 'easy' ? 'Легкая' : level.difficulty === 'hard' ? 'Сложная' : 'Средняя'}
+                </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-cyan-400/10 rounded-lg border border-cyan-400/20">
                 <span className="text-cyan-200 text-sm">Очки</span>
-                <span className="text-cyan-300 font-semibold">100</span>
+                <span className="text-cyan-300 font-semibold">{level.points || 100}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-cyan-400/10 rounded-lg border border-cyan-400/20">
                 <span className="text-cyan-200 text-sm">Время</span>
-                <span className="text-cyan-300 font-semibold">~15 мин</span>
+                <span className="text-cyan-300 font-semibold">~{level.estimatedTime || '15 мин'}</span>
               </div>
             </div>
           </div>
@@ -204,7 +190,7 @@ const LevelPage = () => {
           </div>
           <div className="p-6 rounded-lg bg-gradient-to-br from-cyan-500/10 to-cyan-400/5 border-2 border-cyan-400/20 shadow-inner">
             <p className="text-cyan-100 text-lg leading-relaxed whitespace-pre-line font-medium">
-              {level.task}
+              {level.task || 'Задание отсутствует'}
             </p>
           </div>
         </div>

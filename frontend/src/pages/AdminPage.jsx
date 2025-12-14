@@ -6,12 +6,14 @@ import { Button } from '../components/ui/button.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Label } from '../components/ui/label.jsx';
 import Textarea from '../components/ui/textarea.jsx';
-import { ArrowLeft, Plus, X, Trash2 } from '../components/IconSet.jsx';
+import { ArrowLeft, Plus, X, Trash2, Edit2 } from '../components/IconSet.jsx';
 import { 
   getCategories, 
   createCategory, 
+  updateCategory,
   deleteCategory, 
-  createLevel, 
+  createLevel,
+  updateLevel, 
   deleteLevel 
 } from '../api/categories.js';
 
@@ -40,7 +42,12 @@ const AdminPage = () => {
     task: '',
     flag: '',
     categoryId: null,
+    difficulty: 'medium',
+    points: 100,
+    estimatedTime: '15 мин',
   });
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingLevel, setEditingLevel] = useState(null);
 
   // Если пользователь не админ, редирект (это также обрабатывается в AdminRoute, но на всякий случай)
   if (!isAdmin) {
@@ -81,43 +88,81 @@ const AdminPage = () => {
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await createCategory(categoryForm);
+      let response;
+      if (editingCategory) {
+        // Редактирование существующей категории
+        response = await updateCategory(editingCategory.id, categoryForm);
+        if (response.success) {
+          showToast('Категория обновлена!', 'success');
+          setEditingCategory(null);
+        }
+      } else {
+        // Создание новой категории
+        response = await createCategory(categoryForm);
+        if (response.success) {
+          showToast('Категория создана!', 'success');
+        }
+      }
+      
       if (response.success) {
         setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
         setIsCategoryModalOpen(false);
-        showToast('Категория создана!', 'success');
         await loadCategories(); // Перезагружаем категории
       }
     } catch (error) {
-      console.error('Ошибка создания категории:', error);
-      showToast(error.message || 'Ошибка создания категории', 'error');
+      console.error('Ошибка сохранения категории:', error);
+      showToast(error.message || 'Ошибка сохранения категории', 'error');
     }
   };
 
   const handleLevelSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedCategory) {
+    if (!selectedCategory && !editingLevel) {
       showToast('Выберите категорию', 'error');
       return;
     }
 
     try {
-      const response = await createLevel(selectedCategory.id, {
-        name: levelForm.name,
-        description: levelForm.description,
-        task: levelForm.task,
-        flag: levelForm.flag,
-      });
+      let response;
+      if (editingLevel) {
+        // Редактирование существующего уровня
+        response = await updateLevel(editingLevel.id, {
+          name: levelForm.name,
+          description: levelForm.description,
+          task: levelForm.task,
+          flag: levelForm.flag,
+          difficulty: levelForm.difficulty,
+          points: levelForm.points,
+          estimatedTime: levelForm.estimatedTime,
+        });
+        if (response.success) {
+          showToast('Уровень обновлен!', 'success');
+          setEditingLevel(null);
+        }
+      } else {
+        // Создание нового уровня
+        response = await createLevel(selectedCategory.id, {
+          name: levelForm.name,
+          description: levelForm.description,
+          task: levelForm.task,
+          flag: levelForm.flag,
+          difficulty: levelForm.difficulty,
+          points: levelForm.points,
+          estimatedTime: levelForm.estimatedTime,
+        });
+        if (response.success) {
+          showToast('Уровень создан!', 'success');
+        }
+      }
       
       if (response.success) {
-        setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null });
+        setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
         setIsLevelModalOpen(false);
-        showToast('Уровень создан!', 'success');
         await loadCategories(); // Перезагружаем категории с новым уровнем
       }
     } catch (error) {
-      console.error('Ошибка создания уровня:', error);
-      showToast(error.message || 'Ошибка создания уровня', 'error');
+      console.error('Ошибка сохранения уровня:', error);
+      showToast(error.message || 'Ошибка сохранения уровня', 'error');
     }
   };
 
@@ -178,7 +223,11 @@ const AdminPage = () => {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl text-cyan-300">Категории</h2>
                 <Button
-                  onClick={() => setIsCategoryModalOpen(true)}
+                  onClick={() => {
+                    setEditingCategory(null);
+                    setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
+                    setIsCategoryModalOpen(true);
+                  }}
                   className="bg-cyan-400 text-black hover:bg-cyan-300"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -237,7 +286,8 @@ const AdminPage = () => {
                 {selectedCategory && (
                   <Button
                     onClick={() => {
-                      setLevelForm({ ...levelForm, categoryId: selectedCategory.id });
+                      setEditingLevel(null);
+                      setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: selectedCategory.id, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
                       setIsLevelModalOpen(true);
                     }}
                     className="bg-cyan-400 text-black hover:bg-cyan-300"
@@ -264,12 +314,33 @@ const AdminPage = () => {
                           <h3 className="text-cyan-200 font-semibold">{level.name}</h3>
                           <p className="text-cyan-200/70 text-sm">{level.description}</p>
                         </div>
-                        <Button
-                          onClick={() => handleDeleteLevel(level.id)}
-                          className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => {
+                              setEditingLevel(level);
+                              setLevelForm({
+                                name: level.name,
+                                description: level.description || '',
+                                task: level.task || '',
+                                flag: level.flag || '',
+                                categoryId: level.categoryId || selectedCategory.id,
+                                difficulty: level.difficulty || 'medium',
+                                points: level.points || 100,
+                                estimatedTime: level.estimated_time || level.estimatedTime || '15 мин',
+                              });
+                              setIsLevelModalOpen(true);
+                            }}
+                            className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-400/50"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteLevel(level.id)}
+                            className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                       ))}
@@ -293,9 +364,15 @@ const AdminPage = () => {
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
             <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-md w-full mx-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl text-cyan-300">Создать категорию</h3>
+                <h3 className="text-2xl text-cyan-300">
+                  {editingCategory ? 'Редактировать категорию' : 'Создать категорию'}
+                </h3>
                 <Button
-                  onClick={() => setIsCategoryModalOpen(false)}
+                  onClick={() => {
+                    setIsCategoryModalOpen(false);
+                    setEditingCategory(null);
+                    setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
+                  }}
                   className="bg-transparent hover:bg-red-500/20 text-red-400"
                 >
                   <X className="w-5 h-5" />
@@ -337,7 +414,7 @@ const AdminPage = () => {
                   />
                 </div>
                 <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
-                  Создать
+                  {editingCategory ? 'Сохранить' : 'Создать'}
                 </Button>
               </form>
             </div>
@@ -349,9 +426,15 @@ const AdminPage = () => {
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
             <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl text-cyan-300">Создать уровень</h3>
+                <h3 className="text-2xl text-cyan-300">
+                  {editingLevel ? 'Редактировать уровень' : 'Создать уровень'}
+                </h3>
                 <Button
-                  onClick={() => setIsLevelModalOpen(false)}
+                  onClick={() => {
+                    setIsLevelModalOpen(false);
+                    setEditingLevel(null);
+                    setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
+                  }}
                   className="bg-transparent hover:bg-red-500/20 text-red-400"
                 >
                   <X className="w-5 h-5" />
@@ -390,8 +473,40 @@ const AdminPage = () => {
                     required
                   />
                 </div>
+                <div>
+                  <Label className="text-cyan-200">Сложность</Label>
+                  <select
+                    value={levelForm.difficulty}
+                    onChange={(e) => setLevelForm({ ...levelForm, difficulty: e.target.value })}
+                    className="w-full border border-cyan-400/60 bg-[#0a0a0f] text-cyan-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400/70 focus:border-cyan-400"
+                    required
+                  >
+                    <option value="easy">Легкая</option>
+                    <option value="medium">Средняя</option>
+                    <option value="hard">Сложная</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Очки</Label>
+                  <Input
+                    type="number"
+                    value={levelForm.points}
+                    onChange={(e) => setLevelForm({ ...levelForm, points: parseInt(e.target.value) || 0 })}
+                    min="1"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Примерное время</Label>
+                  <Input
+                    value={levelForm.estimatedTime}
+                    onChange={(e) => setLevelForm({ ...levelForm, estimatedTime: e.target.value })}
+                    placeholder="15 мин"
+                    required
+                  />
+                </div>
                 <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
-                  Создать
+                  {editingLevel ? 'Сохранить' : 'Создать'}
                 </Button>
               </form>
             </div>

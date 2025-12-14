@@ -17,6 +17,76 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Получить уровень по ID (без флага для безопасности)
+// ВАЖНО: этот маршрут должен быть перед /:id, иначе Express перехватит запрос как категорию
+router.get('/levels/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const level = await Level.findById(id);
+    
+    if (!level) {
+      return res.status(404).json({ error: 'Уровень не найден' });
+    }
+    
+    // Не возвращаем флаг для безопасности
+    const { flag, ...levelWithoutFlag } = level;
+    
+    // Преобразуем названия полей для фронтенда
+    const formattedLevel = {
+      id: level.id,
+      categoryId: level.category_id,
+      name: level.name,
+      description: level.description,
+      task: level.task,
+      orderIndex: level.order_index,
+      difficulty: level.difficulty,
+      points: level.points,
+      estimatedTime: level.estimated_time,
+    };
+    
+    res.json({
+      success: true,
+      level: formattedLevel,
+    });
+  } catch (err) {
+    console.error('Ошибка получения уровня:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Проверить правильность флага уровня
+router.post('/levels/:id/check', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { flag } = req.body;
+    
+    if (!flag) {
+      return res.status(400).json({ error: 'Требуется флаг' });
+    }
+    
+    const level = await Level.findById(id);
+    
+    if (!level) {
+      return res.status(404).json({ error: 'Уровень не найден' });
+    }
+    
+    // Сравниваем флаги (без учета регистра)
+    const isCorrect = level.flag && 
+      level.flag.trim().toUpperCase() === flag.trim().toUpperCase();
+    
+    res.json({
+      success: true,
+      correct: isCorrect,
+      message: isCorrect 
+        ? 'Правильный флаг! Уровень пройден!' 
+        : 'Неверный флаг. Попробуйте еще раз.',
+    });
+  } catch (err) {
+    console.error('Ошибка проверки флага:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
 // Получить категорию по ID
 router.get('/:id', async (req, res) => {
   try {
@@ -117,7 +187,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:categoryId/levels', async (req, res) => {
   try {
     const { categoryId } = req.params;
-    const { name, description, task, flag, orderIndex } = req.body;
+    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime } = req.body;
     
     if (!name) {
       return res.status(400).json({ error: 'Требуется название уровня' });
@@ -136,6 +206,9 @@ router.post('/:categoryId/levels', async (req, res) => {
       task,
       flag,
       orderIndex,
+      difficulty,
+      points,
+      estimatedTime,
     });
     
     res.status(201).json({
@@ -148,6 +221,9 @@ router.post('/:categoryId/levels', async (req, res) => {
         task: level.task,
         flag: level.flag,
         orderIndex: level.order_index,
+        difficulty: level.difficulty,
+        points: level.points,
+        estimatedTime: level.estimated_time,
       },
     });
   } catch (err) {
@@ -160,9 +236,9 @@ router.post('/:categoryId/levels', async (req, res) => {
 router.put('/levels/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, task, flag, orderIndex } = req.body;
+    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime } = req.body;
     
-    const level = await Level.update(id, { name, description, task, flag, orderIndex });
+    const level = await Level.update(id, { name, description, task, flag, orderIndex, difficulty, points, estimatedTime });
     
     if (!level) {
       return res.status(404).json({ error: 'Уровень не найден' });
@@ -178,6 +254,9 @@ router.put('/levels/:id', async (req, res) => {
         task: level.task,
         flag: level.flag,
         orderIndex: level.order_index,
+        difficulty: level.difficulty,
+        points: level.points,
+        estimatedTime: level.estimated_time,
       },
     });
   } catch (err) {

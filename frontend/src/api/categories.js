@@ -138,3 +138,27 @@ export async function deleteLevel(levelId) {
   });
 }
 
+/**
+ * Получить уровень по ID (без флага)
+ * @param {number|string} levelId - ID уровня
+ * @returns {Promise<object>} - Данные уровня
+ */
+export async function getLevelById(levelId) {
+  return apiRequest(`/categories/levels/${levelId}`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Проверить правильность флага уровня
+ * @param {number|string} levelId - ID уровня
+ * @param {string} flag - Введенный флаг
+ * @returns {Promise<object>} - Результат проверки
+ */
+export async function checkLevelFlag(levelId, flag) {
+  return apiRequest(`/categories/levels/${levelId}/check`, {
+    method: 'POST',
+    body: { flag },
+  });
+}
+

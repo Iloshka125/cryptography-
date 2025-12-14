@@ -2,10 +2,10 @@ const pool = require('../config/database');
 
 class Level {
   // Создать уровень
-  static async create({ categoryId, name, description, task, flag, orderIndex }) {
+  static async create({ categoryId, name, description, task, flag, orderIndex, difficulty, points, estimatedTime }) {
     const query = `
-      INSERT INTO levels (category_id, name, description, task, flag, order_index)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO levels (category_id, name, description, task, flag, order_index, difficulty, points, estimated_time)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *;
     `;
     const values = [
@@ -15,6 +15,9 @@ class Level {
       task || null,
       flag || null,
       orderIndex || 0,
+      difficulty || 'medium',
+      points || 100,
+      estimatedTime || '15 мин',
     ];
     const res = await pool.query(query, values);
     return res.rows[0];
@@ -39,7 +42,7 @@ class Level {
   }
 
   // Обновить уровень
-  static async update(levelId, { name, description, task, flag, orderIndex }) {
+  static async update(levelId, { name, description, task, flag, orderIndex, difficulty, points, estimatedTime }) {
     const updates = [];
     const values = [];
     let paramIndex = 1;
@@ -63,6 +66,18 @@ class Level {
     if (orderIndex !== undefined) {
       updates.push(`order_index = $${paramIndex++}`);
       values.push(orderIndex);
+    }
+    if (difficulty !== undefined) {
+      updates.push(`difficulty = $${paramIndex++}`);
+      values.push(difficulty);
+    }
+    if (points !== undefined) {
+      updates.push(`points = $${paramIndex++}`);
+      values.push(points);
+    }
+    if (estimatedTime !== undefined) {
+      updates.push(`estimated_time = $${paramIndex++}`);
+      values.push(estimatedTime);
     }
 
     if (updates.length === 0) {
