@@ -56,12 +56,18 @@ router.post('/login', async (req, res) => {
     const balance = await Balance.findByUserId(user.id);
 
     res.json({ 
+      success: true,
       message: 'Успешный вход', 
-      nickname: user.nickname,
-      user_id: user.id,
-      balance: {
-        coins: balance.coins,
-        hints: balance.hints,
+      user: {
+        nickname: user.nickname,
+        user_id: user.id,
+        email: user.email,
+        phone: user.phone,
+        isAdmin: user.is_admin || false,
+        balance: {
+          coins: balance.coins,
+          hints: balance.hints,
+        },
       },
     });
   } catch (err) {

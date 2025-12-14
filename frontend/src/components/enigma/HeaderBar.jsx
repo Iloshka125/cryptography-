@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { Coins, Zap, ShoppingCart, Medal, Grid3x3, Star, Trophy, Gamepad2 } from '../IconSet.jsx';
 import Button from '../ui/button.jsx';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 
 const HeaderBar = ({
   coins,
@@ -11,6 +12,7 @@ const HeaderBar = ({
   userAvatar,
 }) => {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   
   return (
   <header className="relative z-10 border-b border-cyan-500/30 bg-[#0f0f1a]/70 backdrop-blur">
@@ -100,6 +102,15 @@ const HeaderBar = ({
           <Gamepad2 className="w-4 h-4" />
           <span>1 VS 1</span>
         </Button>
+        {isAdmin && (
+          <Button
+            onClick={() => navigate('/admin')}
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-400 hover:to-pink-400 border border-purple-400"
+          >
+            <span>⚙️</span>
+            <span>АДМИН</span>
+          </Button>
+        )}
       </div>
     </div>
   </header>

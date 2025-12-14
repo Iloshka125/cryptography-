@@ -115,12 +115,14 @@ const RegisterPage = () => {
     try {
       const response = await register(data);
       // Устанавливаем авторизацию с данными пользователя
+      const userData = response.user || response;
       authLogin({
-        user_id: response.user_id,
+        user_id: userData.user_id || response.user_id,
         username: data.nickname,
         email: data.email,
         phone: data.phone,
-        balance: { coins: 1000, hints: 5 }, // Начальный баланс при регистрации
+        isAdmin: userData.isAdmin || false,
+        balance: userData.balance || { coins: 1000, hints: 5 }, // Начальный баланс при регистрации
       });
       showToast(
         response.message || 'Пользователь успешно зарегистрирован!',

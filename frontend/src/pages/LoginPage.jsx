@@ -52,12 +52,14 @@ const LoginPage = () => {
       
       const response = await login(credentials);
       // Устанавливаем авторизацию с данными пользователя
+      const userData = response.user || response;
       authLogin({
-        user_id: response.user_id,
-        username: response.nickname,
-        email: credentials.email,
-        phone: credentials.phone,
-        balance: response.balance,
+        user_id: userData.user_id || response.user_id,
+        username: userData.nickname || response.nickname,
+        email: userData.email || credentials.email,
+        phone: userData.phone || credentials.phone,
+        isAdmin: userData.isAdmin || false,
+        balance: userData.balance || response.balance,
       });
       showToast(
         response.message || `Добро пожаловать, ${response.nickname || 'пользователь'}!`,

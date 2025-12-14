@@ -7,6 +7,8 @@ import RegisterPage from './pages/RegisterPage.jsx';
 import EnigmaPage from './pages/EnigmaPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import LevelPage from './pages/LevelPage.jsx';
+import AdminPage from './pages/AdminPage.jsx';
+import HomePage from './pages/HomePage.jsx';
 
 const PageTransition = ({ children }) => {
   const location = useLocation();
@@ -40,10 +42,24 @@ const ProtectedRoute = ({ children, requireAuth = false }) => {
   const { isAuthenticated } = useAuth();
   
   if (requireAuth && !isAuthenticated) {
-    return <Navigate to="/enigma" replace />;
+    return <Navigate to="/home" replace />;
   }
   
   if (!requireAuth && isAuthenticated) {
+    return <Navigate to="/enigma" replace />;
+  }
+  
+  return children;
+};
+
+const AdminRoute = ({ children }) => {
+  const { isAuthenticated, isAdmin } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/home" replace />;
+  }
+  
+  if (!isAdmin) {
     return <Navigate to="/enigma" replace />;
   }
   
@@ -55,10 +71,22 @@ const AppRoutes = () => {
   
   return (
     <Routes>
-      <Route index element={<Navigate to="/enigma" replace />} />
+      <Route index element={<Navigate to={isAuthenticated ? "/enigma" : "/home"} replace />} />
+      <Route 
+        path="/home" 
+        element={
+          <ProtectedRoute requireAuth={false}>
+            <HomePage />
+          </ProtectedRoute>
+        } 
+      />
       <Route 
         path="/enigma" 
-        element={<EnigmaPage />} 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <EnigmaPage />
+          </ProtectedRoute>
+        } 
       />
       <Route 
         path="/login" 
@@ -93,10 +121,18 @@ const AppRoutes = () => {
         } 
       />
       <Route 
+        path="/admin" 
+        element={
+          <AdminRoute>
+            <AdminPage />
+          </AdminRoute>
+        } 
+      />
+      <Route 
         path="*" 
         element={
           <Navigate 
-            to={isAuthenticated ? "/enigma" : "/enigma"} 
+            to={isAuthenticated ? "/enigma" : "/home"} 
             replace 
           />
         } 

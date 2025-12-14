@@ -44,6 +44,7 @@ router.post('/get', async (req, res) => {
         phone: user.phone,
         avatar: user.avatar || '🎯',
         level: user.level || 1,
+        isAdmin: user.is_admin || false,
         balance: {
           coins: balance.coins,
           hints: balance.hints,

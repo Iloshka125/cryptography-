@@ -35,7 +35,7 @@ class User {
 
   // Получить профиль пользователя
   static async findById(userId) {
-    const query = 'SELECT id, nickname, email, phone, avatar, level FROM users WHERE id = $1';
+    const query = 'SELECT id, nickname, email, phone, avatar, level, is_admin FROM users WHERE id = $1';
     const res = await pool.query(query, [userId]);
     return res.rows[0] || null;
   }

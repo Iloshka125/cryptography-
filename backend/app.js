@@ -5,6 +5,7 @@ const profileRoutes = require('./routes/profile');
 const createUsersTable = require('./migrations/createUsersTable');
 const createUserBalanceTable = require('./migrations/createUserBalanceTable');
 const addProfileFields = require('./migrations/addProfileFields');
+const addAdminField = require('./migrations/addAdminField');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,7 @@ app.use((req, res, next) => {
 createUsersTable();
 createUserBalanceTable();
 addProfileFields();
+addAdminField();
 
 // Маршруты
 app.use('/auth', authRoutes);

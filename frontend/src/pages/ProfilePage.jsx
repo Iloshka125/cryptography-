@@ -40,7 +40,8 @@ const ProfilePage = () => {
     isAuthenticated,
     logout, 
     balance,
-    login: authLogin 
+    login: authLogin,
+    isAdmin 
   } = useAuth();
   
   const [loading, setLoading] = useState(true);
@@ -105,6 +106,7 @@ const ProfilePage = () => {
           email: profile.email,
           phone: profile.phone,
           username: profile.nickname,
+          isAdmin: profile.isAdmin || false,
           balance: profile.balance,
         });
         

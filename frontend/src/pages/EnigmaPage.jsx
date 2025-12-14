@@ -1,5 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState, useEffect } from 'react';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import HeaderBar from '../components/enigma/HeaderBar.jsx';
@@ -12,51 +11,56 @@ import BattlePassSection from '../components/enigma/BattlePassSection.jsx';
 import LeaderboardSection from '../components/enigma/LeaderboardSection.jsx';
 import CompetitionsSection from '../components/enigma/CompetitionsSection.jsx';
 import VersusSection from '../components/enigma/VersusSection.jsx';
-import AuthModal from '../components/enigma/AuthModal.jsx';
-import HeroSection from '../components/enigma/HeroSection.jsx';
+import { getProfile } from '../api/profile.js';
 
 const EnigmaPage = () => {
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const { 
-    isAuthenticated, 
-    login: authLogin, 
     balance, 
     subtractCoins, 
     addHints,
-    fetchBalance 
+    fetchBalance,
+    userId,
+    userEmail: authUserEmail,
+    userPhone: authUserPhone,
   } = useAuth();
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const transitionTimeoutRef = useRef(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [modalState, setModalState] = useState('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-
-  const [username] = useState('CyberHacker');
-  const [userAvatar] = useState('🎯');
 
   const [currentSection, setCurrentSection] = useState('categories');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isShopOpen, setIsShopOpen] = useState(false);
-  const [userLevel, setUserLevel] = useState(7);
+  const [username, setUsername] = useState('');
+  const [userAvatar, setUserAvatar] = useState('🎯');
+  const [userLevel, setUserLevel] = useState(1);
 
-  // Загружаем баланс при монтировании компонента
+  // Загружаем профиль и баланс при монтировании и изменении идентификаторов
   useEffect(() => {
-    if (isAuthenticated) {
+    if (userId || authUserEmail || authUserPhone) {
       fetchBalance();
+      loadUserProfile();
     }
-  }, [isAuthenticated, fetchBalance]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, authUserEmail, authUserPhone, fetchBalance]);
 
-  const [registrationStep, setRegistrationStep] = useState(0);
-  const [task1Answers, setTask1Answers] = useState({
-    question1: false,
-    question2: false,
-    question3: false,
-  });
-  const [task2Answer, setTask2Answer] = useState('');
-  const [task3Answer, setTask3Answer] = useState('');
+  const loadUserProfile = async () => {
+    if (!userId && !authUserEmail && !authUserPhone) return;
+
+    try {
+      const params = userId 
+        ? { user_id: userId }
+        : (authUserEmail ? { email: authUserEmail } : { phone: authUserPhone });
+      
+      const response = await getProfile(params);
+      
+      if (response.success && response.profile) {
+        const profile = response.profile;
+        setUsername(profile.nickname || '');
+        setUserAvatar(profile.avatar || '🎯');
+        setUserLevel(profile.level || 1);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки профиля:', error);
+    }
+  };
 
   const categories = useMemo(
     () => [
@@ -140,59 +144,8 @@ const EnigmaPage = () => {
     { id: 6, name: '10 подсказок', coinPrice: 350, type: 'hint', icon: '💡' },
   ];
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    authLogin(); // Устанавливаем авторизацию через контекст
-    setIsOpen(false);
-  };
-
-  const handleRegisterDataSubmit = (e) => {
-    e.preventDefault();
-    setRegistrationStep(1);
-  };
-
-  const handleTask1Submit = (e) => {
-    e.preventDefault();
-    const allChecked = Object.values(task1Answers).every(Boolean);
-    if (allChecked) {
-      setRegistrationStep(2);
-    }
-  };
-
-  const handleTask2Submit = (e) => {
-    e.preventDefault();
-    if (task2Answer.trim().length >= 10) {
-      setRegistrationStep(3);
-    }
-  };
-
-  const handleTask3Submit = (e) => {
-    e.preventDefault();
-    if (task3Answer.trim().length >= 50) {
-      setRegistrationStep(4);
-    }
-  };
-
-  const handleFinalRegistration = () => {
-    authLogin(); // Устанавливаем авторизацию через контекст
-    setIsOpen(false);
-  };
-
-  const openAuthModal = () => {
-    // Плавный переход к странице регистрации
-    if (transitionTimeoutRef.current) {
-      clearTimeout(transitionTimeoutRef.current);
-    }
-    setIsTransitioning(true);
-    setIsOpen(false);
-    setModalState('register');
-    transitionTimeoutRef.current = setTimeout(() => {
-      navigate('/register');
-    }, 180); // легкая задержка для анимации
-  };
-
   const handleBuyHints = async (amount, price) => {
-    if (balance.coins >= price) {
+    if ((balance?.coins || 0) >= price) {
       try {
         await subtractCoins(price);
         await addHints(amount);
@@ -205,22 +158,17 @@ const EnigmaPage = () => {
     }
   };
 
-
-  const isTask1AllChecked = useMemo(
-    () => Object.values(task1Answers).every(Boolean),
-    [task1Answers],
+  // Эта страница доступна только для авторизованных пользователей
+  // Проверка авторизации происходит в App.jsx через ProtectedRoute
+  const currentCategory = categories.find(
+    (c) => c.id === selectedCategory,
   );
 
-  if (isAuthenticated) {
-    const currentCategory = categories.find(
-      (c) => c.id === selectedCategory,
-    );
-
-    return (
-      <div className={`min-h-screen relative overflow-hidden ${isTransitioning ? 'page-fade-out' : 'page-fade-in'}`}>
+  return (
+    <div className="min-h-screen relative overflow-hidden page-fade-in">
         <HeaderBar
-          coins={balance.coins}
-          hints={balance.hints}
+          coins={balance?.coins || 0}
+          hints={balance?.hints || 0}
           onChangeSection={(section) => {
             if (section === 'shop') {
               setIsShopOpen(true);
@@ -285,51 +233,14 @@ const EnigmaPage = () => {
           )}
         </div>
 
-            <ShopDialog
-              open={isShopOpen}
-              onOpenChange={setIsShopOpen}
-              shopItems={shopItems}
-              onBuyHints={handleBuyHints}
-              coins={balance.coins}
-              showToast={showToast}
-            />
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen">
-      <div className={`slide-panel ${isTransitioning ? 'page-fade-out' : 'page-fade-in'}`}>
-        <HeroSection onStart={openAuthModal} />
-      </div>
-      <div className={`slide-panel ${isTransitioning ? 'page-fade-out' : 'page-fade-in'}`}>
-        <AuthModal
-          open={isOpen}
-          onOpenChange={setIsOpen}
-          modalState={modalState}
-          setModalState={setModalState}
-          registrationStep={registrationStep}
-          email={email}
-          password={password}
-          confirmPassword={confirmPassword}
-          task1Answers={task1Answers}
-          task2Answer={task2Answer}
-          task3Answer={task3Answer}
-          isTask1AllChecked={isTask1AllChecked}
-          setEmail={setEmail}
-          setPassword={setPassword}
-          setConfirmPassword={setConfirmPassword}
-          setTask1Answers={setTask1Answers}
-          setTask2Answer={setTask2Answer}
-          setTask3Answer={setTask3Answer}
-          handleLogin={handleLogin}
-          handleRegisterDataSubmit={handleRegisterDataSubmit}
-          handleTask1Submit={handleTask1Submit}
-          handleTask2Submit={handleTask2Submit}
-          handleTask3Submit={handleTask3Submit}
-          handleFinalRegistration={handleFinalRegistration}
-        />
-      </div>
+      <ShopDialog
+        open={isShopOpen}
+        onOpenChange={setIsShopOpen}
+        shopItems={shopItems}
+        onBuyHints={handleBuyHints}
+        coins={balance?.coins || 0}
+        showToast={showToast}
+      />
     </div>
   );
 };

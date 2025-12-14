@@ -26,6 +26,11 @@ export const AuthProvider = ({ children }) => {
     return localStorage.getItem('username') || null;
   });
   
+  const [isAdmin, setIsAdmin] = useState(() => {
+    const stored = localStorage.getItem('isAdmin');
+    return stored === 'true';
+  });
+  
   const [balance, setBalance] = useState(() => {
     const stored = localStorage.getItem('balance');
     return stored ? JSON.parse(stored) : { coins: 0, hints: 0 };
@@ -62,6 +67,9 @@ export const AuthProvider = ({ children }) => {
       if (username) {
         localStorage.setItem('username', username);
       }
+      if (isAdmin !== undefined) {
+        localStorage.setItem('isAdmin', isAdmin.toString());
+      }
       // Загружаем баланс при авторизации
       fetchBalance();
     } else {
@@ -70,14 +78,16 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('userEmail');
       localStorage.removeItem('userPhone');
       localStorage.removeItem('username');
+      localStorage.removeItem('isAdmin');
       localStorage.removeItem('balance');
       setUserId(null);
       setUserEmail(null);
       setUserPhone(null);
       setUsername(null);
+      setIsAdmin(false);
       setBalance({ coins: 0, hints: 0 });
     }
-  }, [isAuthenticated, userId, userEmail, userPhone, username, fetchBalance]);
+  }, [isAuthenticated, userId, userEmail, userPhone, username, isAdmin, fetchBalance]);
 
   const login = (userData = {}) => {
     setIsAuthenticated(true);
@@ -93,6 +103,9 @@ export const AuthProvider = ({ children }) => {
     if (userData.username) {
       setUsername(userData.username);
     }
+    if (userData.isAdmin !== undefined) {
+      setIsAdmin(userData.isAdmin);
+    }
     if (userData.balance) {
       setBalance(userData.balance);
       localStorage.setItem('balance', JSON.stringify(userData.balance));
@@ -104,6 +117,8 @@ export const AuthProvider = ({ children }) => {
     setUserId(null);
     setUserEmail(null);
     setUserPhone(null);
+    setUsername(null);
+    setIsAdmin(false);
     setBalance({ coins: 0, hints: 0 });
   };
 
@@ -220,6 +235,7 @@ export const AuthProvider = ({ children }) => {
       userEmail,
       userPhone,
       username,
+      isAdmin,
       balance,
       login, 
       logout,
