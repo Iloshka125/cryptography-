@@ -9,27 +9,27 @@ import {
 import { Label } from '../ui/label.jsx';
 import { Input } from '../ui/input.jsx';
 import { Button } from '../ui/button.jsx';
-import { User, Mail, Phone, Lock, Award, CheckCircle2 } from '../IconSet.jsx';
+import { User, Mail, Phone, Lock, Award, CheckCircle2, renderIconByValue, Target, Crown, LockOpen, UserSecret, Code, Gamepad2, Zap, Star, Fire, Rocket, Gem, TheaterMasks, Palette, Magic, Ghost, Dragon, HatWizard, StarOfLife } from '../IconSet.jsx';
 
 const avatars = [
-  '🎯',
-  '👑',
-  '🔓',
-  '🥷',
-  '💻',
-  '🎮',
-  '⚡',
-  '🌟',
-  '🔥',
-  '🚀',
-  '💎',
-  '🎪',
-  '🦾',
-  '🌀',
-  '⭐',
-  '🎨',
-  '🔮',
-  '🎭',
+  { value: 'target', icon: Target, name: 'Target' },
+  { value: 'crown', icon: Crown, name: 'Crown' },
+  { value: 'lock-open', icon: LockOpen, name: 'Lock Open' },
+  { value: 'user-secret', icon: UserSecret, name: 'User Secret' },
+  { value: 'code', icon: Code, name: 'Code' },
+  { value: 'gamepad', icon: Gamepad2, name: 'Gamepad' },
+  { value: 'zap', icon: Zap, name: 'Zap' },
+  { value: 'star', icon: Star, name: 'Star' },
+  { value: 'fire', icon: Fire, name: 'Fire' },
+  { value: 'rocket', icon: Rocket, name: 'Rocket' },
+  { value: 'gem', icon: Gem, name: 'Gem' },
+  { value: 'theater-masks', icon: TheaterMasks, name: 'Theater Masks' },
+  { value: 'palette', icon: Palette, name: 'Palette' },
+  { value: 'magic', icon: Magic, name: 'Magic' },
+  { value: 'ghost', icon: Ghost, name: 'Ghost' },
+  { value: 'dragon', icon: Dragon, name: 'Dragon' },
+  { value: 'hat-wizard', icon: HatWizard, name: 'Hat Wizard' },
+  { value: 'star-of-life', icon: StarOfLife, name: 'Star Of Life' },
 ];
 
 const ProfileDialog = ({
@@ -54,7 +54,7 @@ const ProfileDialog = ({
   achievements,
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] overflow-y-auto bg-[#0f0f1a] border-2 border-cyan-400 shadow-[0_0_30px_rgba(0,255,255,0.3)] backdrop-blur-xl">
+    <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] overflow-y-auto custom-scrollbar bg-[#0f0f1a] border-2 border-cyan-400 shadow-[0_0_30px_rgba(0,255,255,0.3)] backdrop-blur-xl">
       <DialogHeader>
         <DialogTitle className="text-cyan-300 drop-shadow-[0_0_8px_rgba(0,255,255,0.8)] text-2xl">
           ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ
@@ -72,20 +72,24 @@ const ProfileDialog = ({
               Выбор аватара
             </h3>
             <div className="grid grid-cols-6 gap-3">
-              {avatars.map((avatar) => (
-                <button
-                  key={avatar}
-                  type="button"
-                  onClick={() => setUserAvatar(avatar)}
-                  className={`w-12 h-12 text-2xl rounded-lg border-2 transition-all ${
-                    userAvatar === avatar
-                      ? 'border-cyan-400 bg-cyan-400/20 shadow-[0_0_20px_rgba(0,255,255,0.5)]'
-                      : 'border-cyan-200/30 hover:border-cyan-400 hover:bg-cyan-400/10'
-                  }`}
-                >
-                  {avatar}
-                </button>
-              ))}
+              {avatars.map((avatar) => {
+                const IconComponent = avatar.icon;
+                return (
+                  <button
+                    key={avatar.value}
+                    type="button"
+                    onClick={() => setUserAvatar(avatar.value)}
+                    className={`w-12 h-12 rounded-lg border-2 transition-all flex items-center justify-center ${
+                      userAvatar === avatar.value
+                        ? 'border-cyan-400 bg-cyan-400/20 shadow-[0_0_20px_rgba(0,255,255,0.5)]'
+                        : 'border-cyan-200/30 hover:border-cyan-400 hover:bg-cyan-400/10'
+                    }`}
+                    title={avatar.name}
+                  >
+                    <IconComponent className="w-6 h-6 text-cyan-300" />
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -205,7 +209,9 @@ const ProfileDialog = ({
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="text-3xl">{achievement.icon}</div>
+                    <div className="text-3xl text-cyan-300">
+                      {renderIconByValue(achievement.icon || 'award', 'w-8 h-8')}
+                    </div>
                     <div className="flex-1">
                       <h4
                         className={`mb-1 ${

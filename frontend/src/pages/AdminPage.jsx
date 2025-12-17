@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Label } from '../components/ui/label.jsx';
 import Textarea from '../components/ui/textarea.jsx';
-import { ArrowLeft, Plus, X, Trash2, Edit2 } from '../components/IconSet.jsx';
+import { ArrowLeft, Plus, X, Trash2, Edit2, cryptographyIcons, renderIconByValue } from '../components/IconSet.jsx';
 import { 
   getCategories, 
   createCategory, 
@@ -22,6 +22,11 @@ import {
   updateBattlePassReward,
   deleteBattlePassReward,
 } from '../api/battlepass.js';
+import {
+  getLevelExperienceRequirements,
+  setLevelExperienceRequirement,
+  deleteLevelExperienceRequirement,
+} from '../api/levelExperienceRequirements.js';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -35,7 +40,7 @@ const AdminPage = () => {
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     description: '',
-    icon: '🔐',
+    icon: 'lock',
     color: '#00ffff',
   });
   const [loading, setLoading] = useState(false);
@@ -52,6 +57,9 @@ const AdminPage = () => {
     difficulty: 'medium',
     points: 100,
     estimatedTime: '15 мин',
+    orderIndex: 1,
+    isPaid: false,
+    price: 0,
   });
   
   // Состояние для редактирования категории
@@ -66,6 +74,13 @@ const AdminPage = () => {
     reward: '',
   });
 
+  // Состояние для требований опыта для уровней
+  const [levelExperienceRequirements, setLevelExperienceRequirements] = useState([]);
+  const [editingRequirement, setEditingRequirement] = useState(null);
+  const [requirementForm, setRequirementForm] = useState({ level_number: '', experience_required: '' });
+  const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
+  const [loadingRequirements, setLoadingRequirements] = useState(false);
+
   // Если пользователь не админ, редирект (это также обрабатывается в AdminRoute, но на всякий случай)
   if (!isAdmin) {
     return null;
@@ -75,7 +90,73 @@ const AdminPage = () => {
   useEffect(() => {
     loadCategories();
     loadBattlePassRewards();
+    loadLevelExperienceRequirements();
   }, []);
+
+  const loadLevelExperienceRequirements = async () => {
+    try {
+      setLoadingRequirements(true);
+      const response = await getLevelExperienceRequirements();
+      if (response.success && response.requirements) {
+        setLevelExperienceRequirements(response.requirements);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки требований опыта:', error);
+      showToast('Ошибка загрузки требований опыта', 'error');
+    } finally {
+      setLoadingRequirements(false);
+    }
+  };
+
+  const handleRequirementEdit = (requirement) => {
+    setEditingRequirement(requirement);
+    setRequirementForm({
+      level_number: requirement.level_number,
+      experience_required: requirement.experience_required,
+    });
+    setIsRequirementModalOpen(true);
+  };
+
+  const handleRequirementSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await setLevelExperienceRequirement(
+        parseInt(requirementForm.level_number),
+        parseInt(requirementForm.experience_required)
+      );
+      if (response.success) {
+        showToast('Требование обновлено!', 'success');
+        setIsRequirementModalOpen(false);
+        setEditingRequirement(null);
+        setRequirementForm({ level_number: '', experience_required: '' });
+        await loadLevelExperienceRequirements();
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения требования:', error);
+      showToast(error.message || 'Ошибка сохранения требования', 'error');
+    }
+  };
+
+  const handleAddNewRequirement = () => {
+    setEditingRequirement(null);
+    setRequirementForm({ level_number: '', experience_required: '' });
+    setIsRequirementModalOpen(true);
+  };
+
+  const handleDeleteRequirement = async (levelNumber) => {
+    if (window.confirm(`Вы уверены, что хотите удалить требование для уровня ${levelNumber}?`)) {
+      try {
+        const response = await deleteLevelExperienceRequirement(levelNumber);
+        if (response.success) {
+          showToast('Требование удалено', 'success');
+          await loadLevelExperienceRequirements();
+        }
+      } catch (error) {
+        console.error('Ошибка удаления требования:', error);
+        showToast(error.message || 'Ошибка удаления требования', 'error');
+      }
+    }
+  };
 
   const loadBattlePassRewards = async () => {
     try {
@@ -121,7 +202,7 @@ const AdminPage = () => {
     setCategoryForm({
       name: category.name,
       description: category.description || '',
-      icon: category.icon || '🔐',
+      icon: category.icon || 'lock',
       color: category.color || '#00ffff',
     });
     setIsCategoryModalOpen(true);
@@ -134,7 +215,7 @@ const AdminPage = () => {
         // Редактирование категории
         const response = await updateCategory(editingCategory.id, categoryForm);
         if (response.success) {
-          setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
+          setCategoryForm({ name: '', description: '', icon: 'lock', color: '#00ffff' });
           setEditingCategory(null);
           setIsCategoryModalOpen(false);
           showToast('Категория обновлена!', 'success');
@@ -144,7 +225,7 @@ const AdminPage = () => {
         // Создание категории
         const response = await createCategory(categoryForm);
         if (response.success) {
-          setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
+          setCategoryForm({ name: '', description: '', icon: 'lock', color: '#00ffff' });
           setIsCategoryModalOpen(false);
           showToast('Категория создана!', 'success');
           await loadCategories();
@@ -167,6 +248,9 @@ const AdminPage = () => {
       difficulty: level.difficulty || 'medium',
       points: level.points || 100,
       estimatedTime: level.estimated_time || '15 мин',
+      orderIndex: level.order_index || 1,
+      isPaid: level.is_paid || false,
+      price: level.price || 0,
     });
     setIsLevelModalOpen(true);
   };
@@ -189,10 +273,13 @@ const AdminPage = () => {
           difficulty: levelForm.difficulty,
           points: parseInt(levelForm.points),
           estimatedTime: levelForm.estimatedTime,
+          orderIndex: parseInt(levelForm.orderIndex) || 1,
+          isPaid: levelForm.isPaid,
+          price: levelForm.isPaid ? parseInt(levelForm.price) || 0 : 0,
         });
         
         if (response.success) {
-          setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
+          setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
           setEditingLevel(null);
           setIsLevelModalOpen(false);
           showToast('Уровень обновлен!', 'success');
@@ -208,10 +295,13 @@ const AdminPage = () => {
           difficulty: levelForm.difficulty,
           points: parseInt(levelForm.points),
           estimatedTime: levelForm.estimatedTime,
+          orderIndex: parseInt(levelForm.orderIndex) || 1,
+          isPaid: levelForm.isPaid,
+          price: levelForm.isPaid ? parseInt(levelForm.price) || 0 : 0,
         });
         
         if (response.success) {
-          setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
+          setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
           setIsLevelModalOpen(false);
           showToast('Уровень создан!', 'success');
           await loadCategories();
@@ -323,6 +413,69 @@ const AdminPage = () => {
           </h1>
         </div>
 
+        {/* Секция требований опыта для уровней */}
+        <div className="mb-8">
+          <div className="p-6 border-2 border-cyan-400/30 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_20px_rgba(0,255,255,0.2)] backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl text-cyan-300">Требования опыта для уровней</h2>
+              <Button
+                onClick={handleAddNewRequirement}
+                className="bg-cyan-400 text-black hover:bg-cyan-300"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Добавить уровень
+              </Button>
+            </div>
+            <p className="text-cyan-200/70 text-sm mb-4">
+              Настройте количество опыта, необходимое для достижения каждого уровня. Опыт должен быть кумулятивным (накопительным).
+            </p>
+            {loadingRequirements ? (
+              <p className="text-cyan-200/50 text-center py-8">Загрузка...</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-cyan-400/30">
+                      <th className="text-left py-3 px-4 text-cyan-300 font-semibold">Уровень</th>
+                      <th className="text-left py-3 px-4 text-cyan-300 font-semibold">Требуется опыта</th>
+                      <th className="text-right py-3 px-4 text-cyan-300 font-semibold">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {levelExperienceRequirements.map((req) => (
+                      <tr key={req.level_number} className="border-b border-cyan-400/10 hover:bg-cyan-400/5">
+                        <td className="py-3 px-4 text-cyan-200">{req.level_number}</td>
+                        <td className="py-3 px-4 text-cyan-200">{req.experience_required}</td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              onClick={() => handleRequirementEdit(req)}
+                              className="bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/30"
+                              size="sm"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              onClick={() => handleDeleteRequirement(req.level_number)}
+                              className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30"
+                              size="sm"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {levelExperienceRequirements.length === 0 && (
+                  <p className="text-cyan-200/50 text-center py-8">Нет настроенных требований</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Секция Battle Pass */}
         <div className="mb-8">
           <div className="p-6 border-2 border-cyan-400/30 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_20px_rgba(0,255,255,0.2)] backdrop-blur-sm">
@@ -411,10 +564,18 @@ const AdminPage = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-3xl">{category.icon}</span>
+                        <div className="text-3xl text-cyan-300">
+                          {renderIconByValue(category.icon || 'lock', 'w-8 h-8')}
+                        </div>
                         <div>
                           <h3 className="text-cyan-200 font-semibold">{category.name}</h3>
-                          <p className="text-cyan-200/70 text-sm">{category.description || 'Без описания'}</p>
+                          <p className="text-cyan-200/70 text-sm">
+                            {category.description 
+                              ? (category.description.length > 20 
+                                  ? category.description.substring(0, 20) + '...' 
+                                  : category.description)
+                              : ''}
+                          </p>
                           <p className="text-cyan-200/50 text-xs mt-1">
                             Уровней: {Array.isArray(category.levels) ? category.levels.length : 0}
                           </p>
@@ -461,7 +622,7 @@ const AdminPage = () => {
                   <Button
                     onClick={() => {
                       setEditingLevel(null);
-                      setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: selectedCategory.id, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
+                      setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: selectedCategory.id, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1 });
                       setIsLevelModalOpen(true);
                     }}
                     className="bg-cyan-400 text-black hover:bg-cyan-300"
@@ -486,7 +647,13 @@ const AdminPage = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="text-cyan-200 font-semibold">{level.name}</h3>
-                          <p className="text-cyan-200/70 text-sm">{level.description || 'Без описания'}</p>
+                          <p className="text-cyan-200/70 text-sm">
+                            {level.description 
+                              ? (level.description.length > 20 
+                                  ? level.description.substring(0, 20) + '...' 
+                                  : level.description)
+                              : ''}
+                          </p>
                           <div className="flex gap-3 mt-2 text-xs text-cyan-200/60">
                             <span>Сложность: {level.difficulty === 'easy' ? 'Легкая' : level.difficulty === 'hard' ? 'Сложная' : 'Средняя'}</span>
                             <span>Очки: {level.points || 100}</span>
@@ -528,7 +695,7 @@ const AdminPage = () => {
         {/* Модальное окно создания категории */}
         {isCategoryModalOpen && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-2xl w-full mx-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-2xl text-cyan-300">
                   {editingCategory ? 'Редактировать категорию' : 'Создать категорию'}
@@ -537,7 +704,7 @@ const AdminPage = () => {
                   onClick={() => {
                     setIsCategoryModalOpen(false);
                     setEditingCategory(null);
-                    setCategoryForm({ name: '', description: '', icon: '🔐', color: '#00ffff' });
+                    setCategoryForm({ name: '', description: '', icon: 'lock', color: '#00ffff' });
                   }}
                   className="bg-transparent hover:bg-red-500/20 text-red-400"
                 >
@@ -562,13 +729,27 @@ const AdminPage = () => {
                   />
                 </div>
                 <div>
-                  <Label className="text-cyan-200">Иконка (эмодзи)</Label>
-                  <Input
-                    value={categoryForm.icon}
-                    onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })}
-                    maxLength={2}
-                    required
-                  />
+                  <Label className="text-cyan-200">Иконка</Label>
+                  <div className="grid grid-cols-6 gap-2 p-4 border border-cyan-400/30 rounded-lg bg-[#0a0a0f]/50 max-h-64 overflow-y-auto custom-scrollbar">
+                    {cryptographyIcons.map((iconData) => {
+                      const IconComponent = iconData.icon;
+                      return (
+                        <button
+                          key={iconData.value}
+                          type="button"
+                          onClick={() => setCategoryForm({ ...categoryForm, icon: iconData.value })}
+                          className={`p-3 border-2 rounded-lg transition-all ${
+                            categoryForm.icon === iconData.value
+                              ? 'border-cyan-400 bg-cyan-400/20'
+                              : 'border-cyan-400/30 hover:border-cyan-400/50'
+                          }`}
+                          title={iconData.name}
+                        >
+                          <IconComponent className="w-6 h-6 text-cyan-300 mx-auto" />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-cyan-200">Цвет (hex)</Label>
@@ -590,7 +771,7 @@ const AdminPage = () => {
         {/* Модальное окно создания уровня */}
         {isLevelModalOpen && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-2xl text-cyan-300">
                   {editingLevel ? 'Редактировать уровень' : 'Создать уровень'}
@@ -599,7 +780,7 @@ const AdminPage = () => {
                   onClick={() => {
                     setIsLevelModalOpen(false);
                     setEditingLevel(null);
-                    setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин' });
+                    setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
                   }}
                   className="bg-transparent hover:bg-red-500/20 text-red-400"
                 >
@@ -621,6 +802,9 @@ const AdminPage = () => {
                     value={levelForm.description}
                     onChange={(e) => setLevelForm({ ...levelForm, description: e.target.value })}
                     required
+                    rows={4}
+                    resizable={true}
+                    className="min-h-[100px] max-h-[300px]"
                   />
                 </div>
                 <div>
@@ -671,8 +855,109 @@ const AdminPage = () => {
                     required
                   />
                 </div>
+                <div>
+                  <Label className="text-cyan-200">Номер уровня</Label>
+                  <Input
+                    type="number"
+                    value={levelForm.orderIndex}
+                    onChange={(e) => setLevelForm({ ...levelForm, orderIndex: e.target.value })}
+                    min="1"
+                    placeholder="1"
+                    required
+                  />
+                  <p className="text-cyan-200/60 text-xs mt-1">Порядок отображения уровня в категории</p>
+                </div>
+                <div>
+                  <Label className="text-cyan-200 mb-2 block">Доступ к уровню</Label>
+                  <div className="flex items-center gap-3 mb-3">
+                    <input
+                      type="checkbox"
+                      id="isPaid"
+                      checked={levelForm.isPaid || false}
+                      onChange={(e) => {
+                        const isPaid = e.target.checked;
+                        setLevelForm({ 
+                          ...levelForm, 
+                          isPaid: isPaid, 
+                          price: isPaid ? (levelForm.price || 0) : 0 
+                        });
+                      }}
+                    />
+                    <Label htmlFor="isPaid" className="text-cyan-200 cursor-pointer select-none">
+                      Платный уровень (покупка за монеты)
+                    </Label>
+                  </div>
+                  {levelForm.isPaid && (
+                    <div>
+                      <Label className="text-cyan-200">Стоимость (монеты)</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={levelForm.price || 0}
+                        onChange={(e) => setLevelForm({ ...levelForm, price: parseInt(e.target.value) || 0 })}
+                        required={levelForm.isPaid}
+                        className="bg-[#0a0a0f] border-cyan-400/30 text-cyan-200 mt-1"
+                        placeholder="Введите стоимость"
+                      />
+                    </div>
+                  )}
+                </div>
                 <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
                   {editingLevel ? 'Сохранить изменения' : 'Создать'}
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Модальное окно создания/редактирования требования опыта */}
+        {isRequirementModalOpen && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-2xl w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl text-cyan-300">
+                  {editingRequirement ? 'Редактировать требование' : 'Добавить требование'}
+                </h3>
+                <Button
+                  onClick={() => {
+                    setIsRequirementModalOpen(false);
+                    setEditingRequirement(null);
+                    setRequirementForm({ level_number: '', experience_required: '' });
+                  }}
+                  className="bg-transparent hover:bg-red-500/20 text-red-400"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <form onSubmit={handleRequirementSubmit} className="space-y-4">
+                <div>
+                  <Label className="text-cyan-200">Номер уровня</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={requirementForm.level_number}
+                    onChange={(e) => setRequirementForm({ ...requirementForm, level_number: e.target.value })}
+                    required
+                    disabled={!!editingRequirement}
+                    className="bg-[#0a0a0f] border-cyan-400/30 text-cyan-200"
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Требуется опыта (кумулятивное значение)</Label>
+                  <p className="text-cyan-200/70 text-sm mb-2">
+                    Общее количество опыта, необходимое для достижения этого уровня. Например: для уровня 1 - 100, для уровня 2 - 250, для уровня 3 - 450 и т.д.
+                  </p>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={requirementForm.experience_required}
+                    onChange={(e) => setRequirementForm({ ...requirementForm, experience_required: e.target.value })}
+                    required
+                    className="bg-[#0a0a0f] border-cyan-400/30 text-cyan-200"
+                  />
+                </div>
+                <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
+                  {editingRequirement ? 'Обновить' : 'Создать'}
                 </Button>
               </form>
             </div>
@@ -682,7 +967,7 @@ const AdminPage = () => {
         {/* Модальное окно создания/редактирования награды Battle Pass */}
         {isBattlePassModalOpen && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-2xl w-full mx-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-2xl text-cyan-300">
                   {editingBattlePassReward ? 'Редактировать награду' : 'Создать награду'}

@@ -1,8 +1,9 @@
 import PropTypes from 'prop-types';
-import { Medal, Star } from '../IconSet.jsx';
+import { Medal, Star, User, renderIconByValue } from '../IconSet.jsx';
 
-const LeaderboardSection = ({ data, username, userLevel, userScore = 6500 }) => {
-  const userRank = data.findIndex((p) => p.username === username) + 1 || 4;
+const LeaderboardSection = ({ data, username, userLevel, userScore = 6500, loading = false, userRank: propUserRank }) => {
+  // Используем переданный рейтинг или вычисляем из данных
+  const userRank = propUserRank || data.findIndex((p) => p.username === username) + 1 || data.length + 1;
   
   return (
     <div className="space-y-6">
@@ -16,9 +17,19 @@ const LeaderboardSection = ({ data, username, userLevel, userScore = 6500 }) => 
       </div>
 
     <div className="space-y-3">
-      {data.map((player) => (
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-cyan-200/50">Загрузка лидерборда...</p>
+        </div>
+      ) : data.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-cyan-200/50">Нет данных в лидерборде</p>
+        </div>
+      ) : (
+        data.map((player) => (
         <div
-          key={player.rank}
+          key={player.userId || player.rank || player.username}
           className={`p-6 border-2 rounded-lg flex items-center justify-between transition-all ${
             player.rank <= 3
               ? 'border-amber-300 bg-gradient-to-r from-amber-300/10 to-amber-300/5 shadow-[0_0_25px_rgba(255,215,0,0.3)]'
@@ -40,20 +51,24 @@ const LeaderboardSection = ({ data, username, userLevel, userScore = 6500 }) => 
               }`}
             >
               {player.rank <= 3 ? (
-                player.rank === 1 ? (
-                  '🥇'
-                ) : player.rank === 2 ? (
-                  '🥈'
-                ) : (
-                  '🥉'
-                )
+                <Medal className={`w-8 h-8 ${
+                  player.rank === 1
+                    ? 'text-amber-300'
+                    : player.rank === 2
+                      ? 'text-gray-300'
+                      : 'text-amber-600'
+                }`} />
               ) : (
                 <span className="text-cyan-200">#{player.rank}</span>
               )}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl">{player.avatar}</span>
+                <div className="text-2xl text-cyan-300">
+                  {player.avatar && typeof player.avatar === 'string'
+                    ? renderIconByValue(player.avatar, 'w-8 h-8')
+                    : renderIconByValue('target', 'w-8 h-8')}
+                </div>
                 <h3
                   className={`text-xl ${
                     player.username === username
@@ -95,9 +110,10 @@ const LeaderboardSection = ({ data, username, userLevel, userScore = 6500 }) => 
               }`}
             />
           )}
-        </div>
-      ))}
-    </div>
+          </div>
+          ))
+        )}
+      </div>
   </div>
   );
 };
@@ -107,6 +123,8 @@ LeaderboardSection.propTypes = {
   username: PropTypes.string,
   userLevel: PropTypes.number,
   userScore: PropTypes.number,
+  loading: PropTypes.bool,
+  userRank: PropTypes.number,
 };
 
 export default LeaderboardSection;

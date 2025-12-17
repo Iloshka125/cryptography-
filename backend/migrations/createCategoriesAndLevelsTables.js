@@ -7,7 +7,7 @@ async function createCategoriesAndLevelsTables() {
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       description TEXT,
-      icon VARCHAR(10) DEFAULT '🔐',
+      icon VARCHAR(50) DEFAULT 'lock',
       color VARCHAR(20) DEFAULT '#00ffff',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

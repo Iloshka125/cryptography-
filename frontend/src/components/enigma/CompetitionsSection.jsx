@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import Button from '../ui/button.jsx';
-import { Trophy, Star, Clock, Users } from '../IconSet.jsx';
+import { Trophy, Star, Clock, Users, Crown, Zap, renderIconByValue } from '../IconSet.jsx';
 
 const CompetitionsSection = ({ showToast }) => {
   const competitions = [
@@ -12,7 +12,7 @@ const CompetitionsSection = ({ showToast }) => {
       participants: 234,
       status: 'active',
       endDate: '2024-01-15',
-      icon: '🏆',
+      icon: 'trophy',
     },
     {
       id: 2,
@@ -22,7 +22,7 @@ const CompetitionsSection = ({ showToast }) => {
       participants: 567,
       status: 'active',
       endDate: '2024-01-31',
-      icon: '👑',
+      icon: 'crown',
     },
     {
       id: 3,
@@ -32,7 +32,7 @@ const CompetitionsSection = ({ showToast }) => {
       participants: 89,
       status: 'upcoming',
       endDate: '2024-01-20',
-      icon: '⚡',
+      icon: 'zap',
     },
   ];
 
@@ -59,7 +59,9 @@ const CompetitionsSection = ({ showToast }) => {
             }`}
           >
             <div className="text-center mb-4">
-              <div className="text-5xl mb-3">{competition.icon}</div>
+              <div className="text-5xl mb-3 text-cyan-300">
+                {renderIconByValue(competition.icon || 'trophy', 'w-12 h-12')}
+              </div>
               <h3 className="text-xl text-cyan-300 mb-2 font-semibold">
                 {competition.name}
               </h3>

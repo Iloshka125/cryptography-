@@ -26,7 +26,12 @@ class Category {
               'description', l.description,
               'task', l.task,
               'flag', l.flag,
-              'order_index', l.order_index
+              'order_index', l.order_index,
+              'difficulty', l.difficulty,
+              'points', l.points,
+              'estimated_time', l.estimated_time,
+              'is_paid', l.is_paid,
+              'price', l.price
             ) ORDER BY l.order_index
           ) FILTER (WHERE l.id IS NOT NULL),
           '[]'
@@ -63,7 +68,9 @@ class Category {
               'order_index', l.order_index,
               'difficulty', l.difficulty,
               'points', l.points,
-              'estimated_time', l.estimated_time
+              'estimated_time', l.estimated_time,
+              'is_paid', l.is_paid,
+              'price', l.price
             ) ORDER BY l.order_index
           ) FILTER (WHERE l.id IS NOT NULL),
           '[]'

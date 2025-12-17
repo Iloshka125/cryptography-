@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import HeaderBar from '../components/enigma/HeaderBar.jsx';
@@ -14,6 +14,7 @@ import VersusSection from '../components/enigma/VersusSection.jsx';
 import { getProfile } from '../api/profile.js';
 import { getCategories } from '../api/categories.js';
 import { getBattlePassRewards, claimBattlePassReward } from '../api/battlepass.js';
+import { getLeaderboard } from '../api/leaderboard.js';
 
 const EnigmaPage = () => {
   const { showToast } = useToast();
@@ -32,11 +33,21 @@ const EnigmaPage = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [username, setUsername] = useState('');
-  const [userAvatar, setUserAvatar] = useState('🎯');
+  const [userAvatar, setUserAvatar] = useState('target');
   const [userLevel, setUserLevel] = useState(1);
+  const [userExperience, setUserExperience] = useState(0);
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [battlePassRewards, setBattlePassRewards] = useState([]);
+  const [battlePassData, setBattlePassData] = useState({
+    maxLevel: 10,
+    currentLevelExperience: 0,
+    nextLevelExperience: 0,
+    experienceForNextLevel: 0,
+  });
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  const [userRank, setUserRank] = useState(null);
 
   // Загружаем профиль и баланс при монтировании и изменении идентификаторов
   useEffect(() => {
@@ -52,6 +63,7 @@ const EnigmaPage = () => {
     loadCategories();
     if (userId) {
       loadBattlePassRewards();
+      loadLeaderboard();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
@@ -62,15 +74,24 @@ const EnigmaPage = () => {
     try {
       const response = await getBattlePassRewards(userId);
       if (response.success && response.rewards) {
-        // Преобразуем данные из БД в формат, ожидаемый компонентом
-        const formattedRewards = response.rewards.map(reward => ({
-          id: reward.id,
-          level: reward.level,
-          reward: reward.reward,
-          unlocked: userLevel >= reward.level,
-          claimed: reward.claimed || false,
-        }));
-        setBattlePassRewards(formattedRewards);
+        // Используем данные напрямую из бэкенда (unlocked уже рассчитано там)
+        setBattlePassRewards(response.rewards);
+        
+        // Сохраняем данные для отображения прогресса
+        if (response.userExperience !== undefined) {
+          setUserExperience(response.userExperience);
+        }
+        if (response.userLevel !== undefined) {
+          setUserLevel(response.userLevel);
+        }
+        if (response.maxLevel !== undefined) {
+          setBattlePassData({
+            maxLevel: response.maxLevel || 10,
+            currentLevelExperience: response.currentLevelExperience || 0,
+            nextLevelExperience: response.nextLevelExperience || 0,
+            experienceForNextLevel: response.experienceForNextLevel || 0,
+          });
+        }
       }
     } catch (error) {
       console.error('Ошибка загрузки наград Battle Pass:', error);
@@ -79,23 +100,30 @@ const EnigmaPage = () => {
   };
 
   const loadCategories = async () => {
+    if (!userId) return;
+    
     try {
       setCategoriesLoading(true);
-      const response = await getCategories();
+      const response = await getCategories(userId);
       if (response.success && response.categories) {
         // Преобразуем данные из БД в формат, ожидаемый компонентами
         const formattedCategories = response.categories.map(cat => ({
           id: cat.id,
           name: cat.name,
           description: cat.description || '',
-          icon: cat.icon || '🔐',
+          icon: cat.icon || 'lock',
           color: cat.color || '#00ffff',
           levels: (cat.levels || []).map(level => ({
             id: level.id,
             name: level.name,
             description: level.description || '',
-            completed: false, // TODO: загрузить прогресс пользователя
-            locked: false, // TODO: определить логику блокировки
+            completed: level.completed || false,
+            isPaid: level.is_paid || false,
+            price: level.price || 0,
+            purchased: level.purchased !== undefined ? level.purchased : (!level.is_paid), // Бесплатные считаются купленными
+            locked: (level.is_paid && !level.purchased), // Заблокирован, если платный и не куплен
+            order_index: level.order_index,
+            orderIndex: level.order_index,
           })),
         }));
         setCategories(formattedCategories);
@@ -123,9 +151,16 @@ const EnigmaPage = () => {
       if (response.success && response.profile) {
         const profile = response.profile;
         setUsername(profile.nickname || '');
-        setUserAvatar(profile.avatar || '🎯');
+        setUserAvatar(profile.avatar || 'target');
         const newLevel = profile.level || 1;
+        const newExperience = profile.experience || 0;
         setUserLevel(newLevel);
+        setUserExperience(newExperience);
+        
+        // Перезагружаем Battle Pass при изменении уровня или опыта
+        if (userId) {
+          loadBattlePassRewards();
+        }
       }
     } catch (error) {
       console.error('Ошибка загрузки профиля:', error);
@@ -162,22 +197,52 @@ const EnigmaPage = () => {
     }
   };
 
-  // Обновляем статус разблокировки наград при изменении уровня пользователя
+  // Обновляем статус разблокировки наград при изменении уровня или опыта пользователя
   useEffect(() => {
     if (userLevel && userId) {
       loadBattlePassRewards();
+      loadLeaderboard();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLevel]);
+  }, [userLevel, userExperience]);
 
-
-  const leaderboardData = useMemo(() => [
-    { rank: 1, username: 'CryptoMaster', score: 15420, avatar: '👑', level: 10 },
-    { rank: 2, username: username, score: 12350, avatar: userAvatar, level: userLevel },
-    { rank: 3, username: 'CodeBreaker', score: 10890, avatar: '🔓', level: 9 },
-    { rank: 4, username: 'DigitalNinja', score: 9540, avatar: '🥷', level: 8 },
-    { rank: 5, username: 'HackTheSystem', score: 8720, avatar: '💻', level: 7 },
-  ], [username, userAvatar, userLevel]);
+  const loadLeaderboard = async () => {
+    if (!userId) return;
+    
+    try {
+      setLeaderboardLoading(true);
+      const response = await getLeaderboard(userId, 100);
+      if (response.success && response.leaderboard) {
+        // Преобразуем данные из БД в формат, ожидаемый компонентом
+        const formattedLeaderboard = response.leaderboard.map(user => ({
+          rank: user.rank,
+          username: user.nickname || 'Без имени',
+          score: user.experience || 0,
+          avatar: user.avatar || 'target',
+          level: user.level || 1,
+          userId: user.id,
+        }));
+        setLeaderboardData(formattedLeaderboard);
+        
+        // Сохраняем рейтинг пользователя, если он есть
+        if (response.userRank) {
+          setUserRank(response.userRank.rank);
+        } else {
+          // Если пользователь в топе, находим его позицию
+          const userIndex = formattedLeaderboard.findIndex(u => u.userId === parseInt(userId));
+          if (userIndex !== -1) {
+            setUserRank(userIndex + 1);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки лидерборда:', error);
+      showToast('Ошибка загрузки лидерборда', 'error');
+      setLeaderboardData([]);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
 
 
 
@@ -185,9 +250,9 @@ const EnigmaPage = () => {
     { id: 1, name: '100 монет', price: 1.99, type: 'currency', icon: '💎' },
     { id: 2, name: '500 монет', price: 8.99, type: 'currency', icon: '💎' },
     { id: 3, name: '1000 монет', price: 14.99, type: 'currency', icon: '💎', popular: true },
-    { id: 4, name: '1 подсказка', coinPrice: 50, type: 'hint', icon: '💡' },
-    { id: 5, name: '5 подсказок', coinPrice: 200, type: 'hint', icon: '💡' },
-    { id: 6, name: '10 подсказок', coinPrice: 350, type: 'hint', icon: '💡' },
+    { id: 4, name: '1 подсказка', coinPrice: 50, type: 'hint', icon: 'zap' },
+    { id: 5, name: '5 подсказок', coinPrice: 200, type: 'hint', icon: 'zap' },
+    { id: 6, name: '10 подсказок', coinPrice: 350, type: 'hint', icon: 'zap' },
   ];
 
   const handleBuyHints = async (amount, price) => {
@@ -201,6 +266,33 @@ const EnigmaPage = () => {
       }
     } else {
       showToast('Недостаточно монет!', 'error');
+    }
+  };
+
+  const handlePurchaseLevel = async (levelId, price) => {
+    if (!userId) {
+      showToast('Требуется авторизация', 'error');
+      return;
+    }
+
+    if ((balance?.coins || 0) < price) {
+      showToast('Недостаточно монет!', 'error');
+      return;
+    }
+
+    try {
+      const { purchaseLevel } = await import('../api/categories.js');
+      const response = await purchaseLevel(levelId, userId);
+      
+      if (response.success) {
+        await fetchBalance(); // Обновляем баланс
+        await loadCategories(); // Перезагружаем категории, чтобы обновить статус покупки
+        showToast('Уровень успешно куплен!', 'success');
+      } else {
+        showToast(response.error || 'Ошибка при покупке уровня', 'error');
+      }
+    } catch (error) {
+      showToast(error.message || 'Ошибка при покупке уровня', 'error');
     }
   };
 
@@ -246,6 +338,9 @@ const EnigmaPage = () => {
               <CategoryLevels
                 category={currentCategory}
                 onBack={() => setSelectedCategory(null)}
+                userId={userId}
+                balance={balance}
+                onPurchaseLevel={handlePurchaseLevel}
               />
             </div>
           )}
@@ -254,7 +349,9 @@ const EnigmaPage = () => {
             <div className="slide-panel">
               <BattlePassSection 
                 rewards={battlePassRewards} 
-                userLevel={userLevel} 
+                userLevel={userLevel}
+                userExperience={userExperience}
+                battlePassData={battlePassData}
                 showToast={showToast}
                 onClaimReward={handleClaimReward}
               />
@@ -267,6 +364,8 @@ const EnigmaPage = () => {
                 data={leaderboardData} 
                 username={username}
                 userLevel={userLevel}
+                loading={leaderboardLoading}
+                userRank={userRank}
               />
             </div>
           )}

@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import Button from '../ui/button.jsx';
-import { Coins } from '../IconSet.jsx';
+import { Coins, Zap, renderIconByValue } from '../IconSet.jsx';
 
 const ShopSection = ({ shopItems, onBuyHints, coins }) => (
   <div className="space-y-6">
@@ -28,7 +28,13 @@ const ShopSection = ({ shopItems, onBuyHints, coins }) => (
                 </div>
               )}
               <div className="text-center mb-4">
-                <div className="text-4xl mb-2">{item.icon}</div>
+                <div className="text-4xl mb-2 text-cyan-300">
+                  {typeof item.icon === 'string' && item.icon.length < 10
+                    ? renderIconByValue(item.icon, 'w-10 h-10')
+                    : item.type === 'hint' 
+                      ? <Zap className="w-10 h-10" />
+                      : <Coins className="w-10 h-10" />}
+                </div>
                 <h4 className="text-lg text-cyan-200">{item.name}</h4>
               </div>
               <Button className="w-full bg-cyan-400 text-black hover:bg-cyan-300 shadow-[0_0_15px_rgba(0,255,255,0.4)]">
@@ -50,7 +56,13 @@ const ShopSection = ({ shopItems, onBuyHints, coins }) => (
               className="p-6 border-2 border-cyan-400 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_20px_rgba(0,255,255,0.3)] hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] transition-all"
             >
               <div className="text-center mb-4">
-                <div className="text-4xl mb-2">{item.icon}</div>
+                <div className="text-4xl mb-2 text-cyan-300">
+                  {typeof item.icon === 'string' && item.icon.length < 10
+                    ? renderIconByValue(item.icon, 'w-10 h-10')
+                    : item.type === 'hint' 
+                      ? <Zap className="w-10 h-10" />
+                      : <Coins className="w-10 h-10" />}
+                </div>
                 <h4 className="text-lg text-cyan-200">{item.name}</h4>
               </div>
               <Button

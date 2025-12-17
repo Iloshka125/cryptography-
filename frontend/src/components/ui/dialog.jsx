@@ -21,7 +21,7 @@ Dialog.propTypes = {
 export const DialogContent = ({ className = '', onClick, children }) => (
   <div
     className={[
-      'bg-[#0f0f1a] text-cyan-100 border border-cyan-500/40 rounded-xl shadow-2xl max-h-[90vh] overflow-auto w-full max-w-5xl',
+      'bg-[#0f0f1a] text-cyan-100 border border-cyan-500/40 rounded-xl shadow-2xl max-h-[90vh] overflow-auto custom-scrollbar w-full max-w-5xl',
       className,
     ]
       .filter(Boolean)

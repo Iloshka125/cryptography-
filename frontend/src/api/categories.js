@@ -37,10 +37,12 @@ async function apiRequest(endpoint, options = {}) {
 
 /**
  * Получить все категории с уровнями
+ * @param {number|string} [userId] - ID пользователя для проверки пройденных уровней
  * @returns {Promise<object>} - Список категорий
  */
-export async function getCategories() {
-  return apiRequest('/categories', {
+export async function getCategories(userId) {
+  const url = userId ? `/categories?user_id=${userId}` : '/categories';
+  return apiRequest(url, {
     method: 'GET',
   });
 }
@@ -143,8 +145,9 @@ export async function deleteLevel(levelId) {
  * @param {number|string} levelId - ID уровня
  * @returns {Promise<object>} - Данные уровня
  */
-export async function getLevelById(levelId) {
-  return apiRequest(`/categories/levels/${levelId}`, {
+export async function getLevelById(levelId, userId) {
+  const url = userId ? `/categories/levels/${levelId}?user_id=${userId}` : `/categories/levels/${levelId}`;
+  return apiRequest(url, {
     method: 'GET',
   });
 }
@@ -153,12 +156,26 @@ export async function getLevelById(levelId) {
  * Проверить правильность флага уровня
  * @param {number|string} levelId - ID уровня
  * @param {string} flag - Введенный флаг
+ * @param {number|string} userId - ID пользователя
  * @returns {Promise<object>} - Результат проверки
  */
-export async function checkLevelFlag(levelId, flag) {
+export async function checkLevelFlag(levelId, flag, userId) {
   return apiRequest(`/categories/levels/${levelId}/check`, {
     method: 'POST',
-    body: { flag },
+    body: { flag, user_id: userId },
+  });
+}
+
+/**
+ * Купить уровень
+ * @param {number|string} levelId - ID уровня
+ * @param {number|string} userId - ID пользователя
+ * @returns {Promise<object>} - Результат покупки
+ */
+export async function purchaseLevel(levelId, userId) {
+  return apiRequest(`/categories/levels/${levelId}/purchase`, {
+    method: 'POST',
+    body: { user_id: userId },
   });
 }
 

@@ -5,28 +5,28 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { Label } from '../components/ui/label.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Button } from '../components/ui/button.jsx';
-import { User, Mail, Phone, Lock, Award, CheckCircle2, ArrowLeft } from '../components/IconSet.jsx';
+import { User, Mail, Phone, Lock, Award, CheckCircle2, ArrowLeft, renderIconByValue, Target, Crown, LockOpen, UserSecret, Code, Gamepad2, Zap, Star, Fire, Rocket, Gem, TheaterMasks, Palette, Magic, Ghost, Dragon, HatWizard, StarOfLife } from '../components/IconSet.jsx';
 import { getProfile, updateProfile, changePassword } from '../api/profile.js';
 
 const avatars = [
-  '🎯',
-  '👑',
-  '🔓',
-  '🥷',
-  '💻',
-  '🎮',
-  '⚡',
-  '🌟',
-  '🔥',
-  '🚀',
-  '💎',
-  '🎪',
-  '🦾',
-  '🌀',
-  '⭐',
-  '🎨',
-  '🔮',
-  '🎭',
+  { value: 'target', icon: Target, name: 'Target' },
+  { value: 'crown', icon: Crown, name: 'Crown' },
+  { value: 'lock-open', icon: LockOpen, name: 'Lock Open' },
+  { value: 'user-secret', icon: UserSecret, name: 'User Secret' },
+  { value: 'code', icon: Code, name: 'Code' },
+  { value: 'gamepad', icon: Gamepad2, name: 'Gamepad' },
+  { value: 'zap', icon: Zap, name: 'Zap' },
+  { value: 'star', icon: Star, name: 'Star' },
+  { value: 'fire', icon: Fire, name: 'Fire' },
+  { value: 'rocket', icon: Rocket, name: 'Rocket' },
+  { value: 'gem', icon: Gem, name: 'Gem' },
+  { value: 'theater-masks', icon: TheaterMasks, name: 'Theater Masks' },
+  { value: 'palette', icon: Palette, name: 'Palette' },
+  { value: 'magic', icon: Magic, name: 'Magic' },
+  { value: 'ghost', icon: Ghost, name: 'Ghost' },
+  { value: 'dragon', icon: Dragon, name: 'Dragon' },
+  { value: 'hat-wizard', icon: HatWizard, name: 'Hat Wizard' },
+  { value: 'star-of-life', icon: StarOfLife, name: 'Star Of Life' },
 ];
 
 const ProfilePage = () => {
@@ -46,7 +46,7 @@ const ProfilePage = () => {
   
   const [loading, setLoading] = useState(true);
   // Инициализируем начальные значения из AuthContext (будут перезаписаны данными из БД)
-  const [userAvatar, setUserAvatar] = useState('🎯');
+  const [userAvatar, setUserAvatar] = useState('target');
   const [username, setUsername] = useState(authUsername || '');
   const [userEmail, setUserEmail] = useState(authUserEmail || '');
   const [userPhone, setUserPhone] = useState(authUserPhone || '');
@@ -97,7 +97,7 @@ const ProfilePage = () => {
         setUsername(profile.nickname || '');
         setUserEmail(profile.email || '');
         setUserPhone(profile.phone || '');
-        setUserAvatar(profile.avatar || '🎯');
+        setUserAvatar(profile.avatar || 'target');
         setUserLevel(profile.level || 1);
         
         // Обновляем данные в AuthContext после загрузки из БД
@@ -120,10 +120,14 @@ const ProfilePage = () => {
           6: { id: 6, name: 'Социальный', description: 'Добавьте 10 друзей', icon: '👥' },
         };
         
-        const mappedAchievements = (profile.achievements || []).map(a => ({
-          ...achievementMap[a.id],
-          unlocked: a.unlocked,
-        }));
+        const mappedAchievements = (profile.achievements || []).map(a => {
+          const achievement = achievementMap[a.id];
+          if (!achievement) return null;
+          return {
+            ...achievement,
+            unlocked: a.unlocked,
+          };
+        }).filter(Boolean);
         setAchievements(mappedAchievements);
       }
     } catch (error) {
@@ -258,8 +262,8 @@ const ProfilePage = () => {
         {/* Profile Header Card */}
         <div className="mb-8 p-8 border-2 border-cyan-400 rounded-lg bg-gradient-to-br from-[#0a0a0f]/90 to-[#0f0f1a]/90 shadow-[0_0_30px_rgba(0,255,255,0.3)] backdrop-blur-xl">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <div className="w-32 h-32 bg-gradient-to-br from-cyan-400 to-cyan-300 rounded-full border-4 border-cyan-400 shadow-[0_0_30px_rgba(0,255,255,0.6)] flex items-center justify-center text-6xl">
-              {userAvatar}
+            <div className="w-32 h-32 bg-gradient-to-br from-cyan-400 to-cyan-300 rounded-full border-4 border-cyan-400 shadow-[0_0_30px_rgba(0,255,255,0.6)] flex items-center justify-center">
+              {renderIconByValue(userAvatar, 'w-16 h-16 text-black')}
             </div>
             <div className="flex-1 text-center md:text-left">
               <h2 className="text-3xl text-cyan-300 mb-2 drop-shadow-[0_0_8px_rgba(0,255,255,0.8)]">
@@ -294,20 +298,24 @@ const ProfilePage = () => {
                 Выбор аватара
               </h3>
               <div className="grid grid-cols-6 gap-3">
-                {avatars.map((avatar) => (
-                  <button
-                    key={avatar}
-                    type="button"
-                    onClick={() => setUserAvatar(avatar)}
-                    className={`w-14 h-14 text-2xl rounded-lg border-2 transition-all hover:scale-110 ${
-                      userAvatar === avatar
-                        ? 'border-cyan-400 bg-cyan-400/30 shadow-[0_0_20px_rgba(0,255,255,0.6)] scale-110'
-                        : 'border-cyan-200/30 hover:border-cyan-400 hover:bg-cyan-400/10'
-                    }`}
-                  >
-                    {avatar}
-                  </button>
-                ))}
+                {avatars.map((avatar) => {
+                  const IconComponent = avatar.icon;
+                  return (
+                    <button
+                      key={avatar.value}
+                      type="button"
+                      onClick={() => setUserAvatar(avatar.value)}
+                      className={`w-14 h-14 rounded-lg border-2 transition-all hover:scale-110 flex items-center justify-center ${
+                        userAvatar === avatar.value
+                          ? 'border-cyan-400 bg-cyan-400/30 shadow-[0_0_20px_rgba(0,255,255,0.6)] scale-110'
+                          : 'border-cyan-200/30 hover:border-cyan-400 hover:bg-cyan-400/10'
+                      }`}
+                      title={avatar.name}
+                    >
+                      <IconComponent className="w-6 h-6 text-cyan-300" />
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -422,9 +430,9 @@ const ProfilePage = () => {
                 Достижения
               </h3>
               <div className="space-y-4">
-                {achievements.map((achievement) => (
+                {achievements.map((achievement, index) => (
                   <div
-                    key={achievement.id}
+                    key={achievement?.id || `achievement-${index}`}
                     className={`p-5 border-2 rounded-lg transition-all hover:scale-[1.02] ${
                       achievement.unlocked
                         ? 'border-amber-300 bg-gradient-to-br from-amber-500/20 to-amber-400/10 shadow-[0_0_20px_rgba(255,215,0,0.3)]'
@@ -432,7 +440,9 @@ const ProfilePage = () => {
                     }`}
                   >
                     <div className="flex items-start gap-4">
-                      <div className="text-4xl flex-shrink-0">{achievement.icon}</div>
+                      <div className="text-4xl flex-shrink-0 text-cyan-300">
+                        {renderIconByValue(achievement.icon || 'award', 'w-10 h-10')}
+                      </div>
                       <div className="flex-1">
                         <h4
                           className={`mb-2 text-lg font-semibold ${

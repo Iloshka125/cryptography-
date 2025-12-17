@@ -1,15 +1,39 @@
 const express = require('express');
 const Category = require('../models/Category');
 const Level = require('../models/Level');
+const UserLevelProgress = require('../models/UserLevelProgress');
+const UserPurchasedLevels = require('../models/UserPurchasedLevels');
+const User = require('../models/User');
+const Balance = require('../models/Balance');
 const router = express.Router();
 
 // Получить все категории с уровнями
 router.get('/', async (req, res) => {
   try {
+    const userId = req.query.user_id || req.query.userId;
     const categories = await Category.findAll();
+    
+    // Если передан user_id, добавляем информацию о пройденных и купленных уровнях
+    let completedLevelIds = [];
+    let purchasedLevelIds = [];
+    if (userId) {
+      completedLevelIds = await UserLevelProgress.getCompletedLevels(parseInt(userId));
+      purchasedLevelIds = await UserPurchasedLevels.getPurchasedLevels(parseInt(userId));
+    }
+    
+    // Добавляем информацию о пройденных уровнях и доступе (купленных/бесплатных)
+    const categoriesWithProgress = categories.map(category => ({
+      ...category,
+      levels: (category.levels || []).map(level => ({
+        ...level,
+        completed: completedLevelIds.includes(level.id),
+        purchased: purchasedLevelIds.includes(level.id) || !level.is_paid, // Бесплатные уровни считаются "купленными"
+      })),
+    }));
+    
     res.json({
       success: true,
-      categories,
+      categories: categoriesWithProgress,
     });
   } catch (err) {
     console.error('Ошибка получения категорий:', err);
@@ -22,6 +46,7 @@ router.get('/', async (req, res) => {
 router.get('/levels/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.query.user_id || req.query.userId;
     const level = await Level.findById(id);
     
     if (!level) {
@@ -30,6 +55,19 @@ router.get('/levels/:id', async (req, res) => {
     
     // Не возвращаем флаг для безопасности
     const { flag, ...levelWithoutFlag } = level;
+    
+    // Проверяем, пройден ли уровень пользователем и куплен ли он
+    let completed = false;
+    let purchased = false;
+    if (userId) {
+      completed = await UserLevelProgress.isLevelCompleted(parseInt(userId), parseInt(id));
+      purchased = await UserPurchasedLevels.isLevelPurchased(parseInt(userId), parseInt(id));
+    }
+    
+    // Бесплатные уровни считаются "купленными"
+    if (!levelWithoutFlag.is_paid) {
+      purchased = true;
+    }
     
     // Форматируем данные для фронтенда
     const formattedLevel = {
@@ -42,6 +80,10 @@ router.get('/levels/:id', async (req, res) => {
       difficulty: levelWithoutFlag.difficulty,
       points: levelWithoutFlag.points,
       estimatedTime: levelWithoutFlag.estimated_time,
+      isPaid: levelWithoutFlag.is_paid || false,
+      price: levelWithoutFlag.price || 0,
+      completed,
+      purchased,
     };
     
     res.json({
@@ -58,10 +100,14 @@ router.get('/levels/:id', async (req, res) => {
 router.post('/levels/:id/check', async (req, res) => {
   try {
     const { id } = req.params;
-    const { flag } = req.body;
+    const { flag, user_id } = req.body;
     
     if (!flag) {
       return res.status(400).json({ error: 'Требуется флаг' });
+    }
+
+    if (!user_id) {
+      return res.status(400).json({ error: 'Требуется user_id' });
     }
     
     const level = await Level.findById(id);
@@ -69,18 +115,54 @@ router.post('/levels/:id/check', async (req, res) => {
     if (!level) {
       return res.status(404).json({ error: 'Уровень не найден' });
     }
+
+    const userId = parseInt(user_id);
+    const levelId = parseInt(id);
+
+    // Проверяем, не пройден ли уже уровень
+    const isAlreadyCompleted = await UserLevelProgress.isLevelCompleted(userId, levelId);
+    
+    if (isAlreadyCompleted) {
+      return res.json({
+        success: true,
+        correct: true,
+        alreadyCompleted: true,
+        message: 'Этот уровень уже пройден!',
+      });
+    }
     
     // Сравниваем флаги (без учета регистра)
     const isCorrect = level.flag && 
       level.flag.trim().toUpperCase() === flag.trim().toUpperCase();
     
-    res.json({
-      success: true,
-      correct: isCorrect,
-      message: isCorrect 
-        ? 'Правильный флаг! Уровень пройден!' 
-        : 'Неверный флаг. Попробуйте еще раз.',
-    });
+    // Если флаг правильный, отмечаем уровень как пройденный и начисляем опыт
+    if (isCorrect) {
+      // Начисляем опыт (используем points уровня)
+      const experienceGained = level.points || 100;
+      
+      // Отмечаем уровень как пройденный (передаем category_id из уровня)
+      await UserLevelProgress.completeLevel(userId, levelId, level.category_id, experienceGained);
+      
+      // Добавляем опыт пользователю и обновляем его уровень
+      const updatedUser = await User.addExperience(userId, experienceGained);
+      
+      res.json({
+        success: true,
+        correct: true,
+        alreadyCompleted: false,
+        message: 'Правильный флаг! Уровень пройден!',
+        experienceGained,
+        newLevel: updatedUser.level,
+        newExperience: updatedUser.experience,
+      });
+    } else {
+      res.json({
+        success: true,
+        correct: false,
+        alreadyCompleted: false,
+        message: 'Неверный флаг. Попробуйте еще раз.',
+      });
+    }
   } catch (err) {
     console.error('Ошибка проверки флага:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
@@ -187,7 +269,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:categoryId/levels', async (req, res) => {
   try {
     const { categoryId } = req.params;
-    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime } = req.body;
+    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price } = req.body;
     
     if (!name) {
       return res.status(400).json({ error: 'Требуется название уровня' });
@@ -209,6 +291,8 @@ router.post('/:categoryId/levels', async (req, res) => {
       difficulty,
       points,
       estimatedTime,
+      isPaid: isPaid || false,
+      price: isPaid ? (price || 0) : 0,
     });
     
     res.status(201).json({
@@ -224,6 +308,8 @@ router.post('/:categoryId/levels', async (req, res) => {
         difficulty: level.difficulty,
         points: level.points,
         estimatedTime: level.estimated_time,
+        isPaid: level.is_paid,
+        price: level.price,
       },
     });
   } catch (err) {
@@ -236,9 +322,17 @@ router.post('/:categoryId/levels', async (req, res) => {
 router.put('/levels/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime } = req.body;
+    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price } = req.body;
     
-    const level = await Level.update(id, { name, description, task, flag, orderIndex, difficulty, points, estimatedTime });
+    const updateData = { name, description, task, flag, orderIndex, difficulty, points, estimatedTime };
+    if (isPaid !== undefined) {
+      updateData.isPaid = isPaid;
+      updateData.price = isPaid ? (price || 0) : 0;
+    } else if (price !== undefined) {
+      updateData.price = price;
+    }
+    
+    const level = await Level.update(id, updateData);
     
     if (!level) {
       return res.status(404).json({ error: 'Уровень не найден' });
@@ -257,6 +351,8 @@ router.put('/levels/:id', async (req, res) => {
         difficulty: level.difficulty,
         points: level.points,
         estimatedTime: level.estimated_time,
+        isPaid: level.is_paid,
+        price: level.price,
       },
     });
   } catch (err) {
@@ -281,6 +377,65 @@ router.delete('/levels/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('Ошибка удаления уровня:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Купить уровень
+router.post('/levels/:id/purchase', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.body;
+    
+    if (!user_id) {
+      return res.status(400).json({ error: 'Требуется user_id' });
+    }
+    
+    const level = await Level.findById(id);
+    if (!level) {
+      return res.status(404).json({ error: 'Уровень не найден' });
+    }
+    
+    // Проверяем, что уровень платный
+    if (!level.is_paid) {
+      return res.status(400).json({ error: 'Этот уровень бесплатный' });
+    }
+    
+    // Проверяем, не куплен ли уже уровень
+    const isPurchased = await UserPurchasedLevels.isLevelPurchased(parseInt(user_id), parseInt(id));
+    if (isPurchased) {
+      return res.status(400).json({ error: 'Уровень уже куплен' });
+    }
+    
+    // Проверяем баланс пользователя
+    const user = await User.findById(parseInt(user_id));
+    if (!user) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+    
+    const price = level.price || 0;
+    const userBalance = await Balance.findByUserId(parseInt(user_id));
+    
+    if ((userBalance?.coins || 0) < price) {
+      return res.status(400).json({ error: 'Недостаточно монет' });
+    }
+    
+    // Списываем монеты
+    await Balance.subtractCoins(parseInt(user_id), price);
+    
+    // Записываем покупку
+    await UserPurchasedLevels.purchaseLevel(parseInt(user_id), parseInt(id), price);
+    
+    // Получаем обновленный баланс
+    const newBalance = await Balance.findByUserId(parseInt(user_id));
+    
+    res.json({
+      success: true,
+      message: 'Уровень успешно куплен',
+      balance: newBalance,
+    });
+  } catch (err) {
+    console.error('Ошибка покупки уровня:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });

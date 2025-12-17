@@ -8,7 +8,7 @@ import {
   DialogDescription,
 } from '../ui/dialog.jsx';
 import Button from '../ui/button.jsx';
-import { Coins, Zap } from '../IconSet.jsx';
+import { Coins, Zap, renderIconByValue } from '../IconSet.jsx';
 
 const ShopDialog = ({ open, onOpenChange, shopItems, onBuyHints, coins, showToast }) => {
   const [activeTab, setActiveTab] = useState('coins');
@@ -106,7 +106,11 @@ const ShopDialog = ({ open, onOpenChange, shopItems, onBuyHints, coins, showToas
                     </div>
                   )}
                   <div className="text-center mb-4">
-                    <div className="text-4xl mb-2">{item.icon}</div>
+                    <div className="text-4xl mb-2 text-cyan-300">
+                      {typeof item.icon === 'string' && item.icon.length < 10
+                        ? renderIconByValue(item.icon, 'w-10 h-10')
+                        : <Coins className="w-10 h-10" />}
+                    </div>
                     <h4 className="text-lg text-cyan-200">{item.name}</h4>
                   </div>
                   <Button
@@ -128,7 +132,11 @@ const ShopDialog = ({ open, onOpenChange, shopItems, onBuyHints, coins, showToas
                   className="p-10 rounded-lg bg-[#0a0a0f]/50 hover:bg-[#0a0a0f]/70 transition-all shadow-[0_0_20px_rgba(0,255,255,0.3)] max-w-[330px] w-full"
                 >
                   <div className="text-center mb-4">
-                    <div className="text-4xl mb-2">{item.icon}</div>
+                    <div className="text-4xl mb-2 text-cyan-300">
+                      {typeof item.icon === 'string' && item.icon.length < 10
+                        ? renderIconByValue(item.icon, 'w-10 h-10')
+                        : <Coins className="w-10 h-10" />}
+                    </div>
                     <h4 className="text-lg text-cyan-200">{item.name}</h4>
                   </div>
                   <Button

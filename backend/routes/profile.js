@@ -42,8 +42,9 @@ router.post('/get', async (req, res) => {
         nickname: user.nickname,
         email: user.email,
         phone: user.phone,
-        avatar: user.avatar || '🎯',
+        avatar: user.avatar || 'target',
         level: user.level || 1,
+        experience: user.experience || 0,
         isAdmin: user.is_admin || false,
         balance: {
           coins: balance.coins,
@@ -100,7 +101,7 @@ router.post('/update', async (req, res) => {
       }
     }
     
-    const updatedUser = await User.updateProfile(userId, { nickname, email, phone, avatar });
+    const updatedUser = await User.update(userId, { nickname, avatar, email, phone });
     
     if (!updatedUser) {
       return res.status(404).json({ error: 'Пользователь не найден' });

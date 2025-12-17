@@ -2,6 +2,8 @@ const express = require('express');
 const BattlePass = require('../models/BattlePass');
 const UserBattlePass = require('../models/UserBattlePass');
 const Balance = require('../models/Balance');
+const LevelExperienceRequirements = require('../models/LevelExperienceRequirements');
+const User = require('../models/User');
 const router = express.Router();
 
 // Получить все награды Battle Pass с информацией о полученных наградах пользователя
@@ -10,20 +12,58 @@ router.get('/', async (req, res) => {
     const userId = req.query.user_id || req.query.userId;
     const rewards = await BattlePass.findAll();
     
+    // Получаем требования опыта для уровней
+    const levelRequirements = await LevelExperienceRequirements.getAll();
+    const requirementsMap = {};
+    levelRequirements.forEach(req => {
+      requirementsMap[req.level_number] = req.experience_required;
+    });
+    
     let claimedRewardIds = [];
+    let userExperience = 0;
+    let userLevel = 1;
+    
     if (userId) {
       claimedRewardIds = await UserBattlePass.getClaimedRewards(parseInt(userId));
+      // Получаем опыт пользователя
+      const user = await User.findById(parseInt(userId));
+      if (user) {
+        userExperience = user.experience || 0;
+        userLevel = user.level || 1;
+      }
     }
     
-    // Добавляем информацию о том, получена ли награда
-    const rewardsWithClaimed = rewards.map(reward => ({
-      ...reward,
-      claimed: claimedRewardIds.includes(reward.id),
-    }));
+    // Добавляем информацию о том, получена ли награда и требования опыта
+    const rewardsWithClaimed = rewards.map(reward => {
+      const levelReq = requirementsMap[reward.level];
+      const prevLevelReq = reward.level > 1 ? (requirementsMap[reward.level - 1] || 0) : 0;
+      const experienceForLevel = levelReq ? (levelReq - prevLevelReq) : 0;
+      const isUnlocked = userExperience >= (levelReq || 0);
+      
+      return {
+        ...reward,
+        claimed: claimedRewardIds.includes(reward.id),
+        experienceRequired: levelReq || 0,
+        experienceForLevel: experienceForLevel,
+        unlocked: isUnlocked,
+      };
+    });
+    
+    // Определяем максимальный уровень и опыт для следующего уровня
+    const maxRewardLevel = rewards.length > 0 ? Math.max(...rewards.map(r => r.level)) : 1;
+    const nextLevelReq = requirementsMap[userLevel + 1] || 0;
+    const currentLevelReq = requirementsMap[userLevel] || 0;
+    const experienceForNextLevel = nextLevelReq - currentLevelReq;
     
     res.json({
       success: true,
       rewards: rewardsWithClaimed,
+      userExperience,
+      userLevel,
+      maxLevel: maxRewardLevel,
+      currentLevelExperience: currentLevelReq,
+      nextLevelExperience: nextLevelReq,
+      experienceForNextLevel: experienceForNextLevel,
     });
   } catch (err) {
     console.error('Ошибка получения наград Battle Pass:', err);

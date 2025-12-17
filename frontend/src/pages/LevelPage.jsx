@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../contexts/ToastContext.jsx';
-import { ArrowLeft, CheckCircle2, Lock, Code, Target, Zap } from '../components/IconSet.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { ArrowLeft, CheckCircle2, Lock, Code, Target, Zap, renderIconByValue } from '../components/IconSet.jsx';
 import Button from '../components/ui/button.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { getLevelById, checkLevelFlag } from '../api/categories.js';
@@ -10,22 +11,36 @@ const LevelPage = () => {
   const { categoryId, levelId } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { userId } = useAuth();
   const [flag, setFlag] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [level, setLevel] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // Загружаем данные уровня из БД
   useEffect(() => {
     loadLevel();
-  }, [levelId]);
+  }, [levelId, userId]);
 
   const loadLevel = async () => {
+    if (!userId) return;
+    
     try {
       setLoading(true);
-      const response = await getLevelById(levelId);
+      const response = await getLevelById(levelId, userId);
       if (response.success && response.level) {
-        setLevel(response.level);
+        const levelData = response.level;
+        // Проверяем доступ к платному уровню
+        if (levelData.isPaid && !levelData.purchased) {
+          showToast('Этот уровень платный. Необходимо его купить.', 'error');
+          setTimeout(() => {
+            navigate('/enigma');
+          }, 2000);
+          return;
+        }
+        setLevel(levelData);
+        setIsCompleted(levelData.completed || false);
       } else {
         showToast('Уровень не найден', 'error');
       }
@@ -40,6 +55,11 @@ const LevelPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (isCompleted) {
+      showToast('Этот уровень уже пройден!', 'info');
+      return;
+    }
+    
     if (!flag.trim()) {
       showToast('Введите флаг', 'error');
       return;
@@ -52,16 +72,43 @@ const LevelPage = () => {
       return;
     }
 
+    if (!userId) {
+      showToast('Ошибка: пользователь не авторизован', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const response = await checkLevelFlag(levelId, flag);
+      const response = await checkLevelFlag(levelId, flag, userId);
       if (response.success) {
         if (response.correct) {
-          showToast(response.message || 'Правильный флаг! Уровень пройден!', 'success');
+          // Если уровень уже был пройден ранее
+          if (response.alreadyCompleted) {
+            showToast(response.message || 'Этот уровень уже пройден!', 'info');
+            setIsCompleted(true);
+            setIsSubmitting(false);
+            // Перезагружаем данные уровня для обновления статуса
+            await loadLevel();
+            return;
+          }
+          
+          // Уровень только что пройден
+          let message = response.message || 'Правильный флаг! Уровень пройден!';
+          if (response.experienceGained) {
+            message += ` Получено ${response.experienceGained} опыта!`;
+            if (response.newLevel) {
+              message += ` Ваш уровень: ${response.newLevel}`;
+            }
+          }
+          showToast(message, 'success');
+          
+          // Обновляем статус уровня как пройденного
+          setIsCompleted(true);
+          
           setTimeout(() => {
             navigate(`/enigma`);
-          }, 1500);
+          }, 2000);
         } else {
           showToast(response.message || 'Неверный флаг. Попробуйте еще раз.', 'error');
           setIsSubmitting(false);
@@ -125,7 +172,7 @@ const LevelPage = () => {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-3">
                   <span className="px-3 py-1 bg-cyan-400/20 border border-cyan-400/50 rounded-lg text-cyan-300 text-sm font-semibold">
-                    УРОВЕНЬ {levelId}
+                    УРОВЕНЬ {level?.order_index || level?.orderIndex || levelId}
                   </span>
                 </div>
                 <h1 className="text-5xl font-bold text-cyan-300 drop-shadow-[0_0_15px_rgba(0,255,255,0.8)] mb-3">
@@ -151,7 +198,7 @@ const LevelPage = () => {
                 Описание
               </h2>
             </div>
-            <p className="text-cyan-200 text-lg leading-relaxed">
+            <p className="text-cyan-200 text-lg leading-relaxed whitespace-pre-wrap">
               {level.description || 'Описание отсутствует'}
             </p>
           </div>
@@ -189,65 +236,98 @@ const LevelPage = () => {
             </h2>
           </div>
           <div className="p-6 rounded-lg bg-gradient-to-br from-cyan-500/10 to-cyan-400/5 border-2 border-cyan-400/20 shadow-inner">
-            <p className="text-cyan-100 text-lg leading-relaxed whitespace-pre-line font-medium">
+            <p className="text-cyan-100 text-lg leading-relaxed whitespace-pre-wrap font-medium">
               {level.task || 'Задание отсутствует'}
             </p>
           </div>
         </div>
 
         {/* Flag Submission Card */}
-        <div className="p-8 rounded-xl bg-gradient-to-br from-[#0a0a0f]/90 to-[#0f0f1a]/90 border-2 border-cyan-400/50 shadow-[0_0_40px_rgba(0,255,255,0.4)] backdrop-blur-xl">
+        <div className={`p-8 rounded-xl bg-gradient-to-br from-[#0a0a0f]/90 to-[#0f0f1a]/90 border-2 backdrop-blur-xl ${
+          isCompleted 
+            ? 'border-green-400/50 shadow-[0_0_40px_rgba(34,197,94,0.4)]' 
+            : 'border-cyan-400/50 shadow-[0_0_40px_rgba(0,255,255,0.4)]'
+        }`}>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-lg bg-green-400/20 border border-green-400/50 flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-green-300" />
+            <div className={`w-12 h-12 rounded-lg border flex items-center justify-center ${
+              isCompleted
+                ? 'bg-green-400/20 border-green-400/50'
+                : 'bg-green-400/20 border-green-400/50'
+            }`}>
+              <CheckCircle2 className={`w-6 h-6 ${
+                isCompleted ? 'text-green-300' : 'text-green-300'
+              }`} />
             </div>
             <h2 className="text-2xl font-bold text-cyan-300 drop-shadow-[0_0_10px_rgba(0,255,255,0.6)]">
-              Введите флаг
+              {isCompleted ? 'Уровень пройден!' : 'Введите флаг'}
             </h2>
           </div>
-          
-          <div className="mb-6 p-4 rounded-lg bg-cyan-400/10 border border-cyan-400/30">
-            <p className="text-cyan-200/90 text-sm flex items-center gap-2">
-              <span className="text-cyan-300 font-semibold">Формат:</span>
-              <span className="font-mono text-cyan-300 bg-black/30 px-3 py-1 rounded border border-cyan-400/50">
-                ENIGMA&#123;...&#125;
-              </span>
-            </p>
-          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-cyan-300/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <Input
-                type="text"
-                value={flag}
-                onChange={(e) => setFlag(e.target.value)}
-                placeholder="ENIGMA{ваш_флаг_здесь}"
-                className="relative w-full text-xl font-mono text-center py-5 bg-[#0f0f1a]/80 border-2 border-cyan-400/50 focus:border-cyan-400 focus:shadow-[0_0_30px_rgba(0,255,255,0.5)] transition-all rounded-lg"
-                disabled={isSubmitting}
-              />
+          {isCompleted && (
+            <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-400/30">
+              <p className="text-green-300 font-semibold text-center">
+                ✓ Этот уровень уже пройден! Вы получили награду за его прохождение.
+              </p>
             </div>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-cyan-400 to-cyan-300 text-black hover:from-cyan-300 hover:to-cyan-200 shadow-[0_0_30px_rgba(0,255,255,0.6)] transition-all hover:scale-[1.02] text-xl font-bold py-5 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                  Проверка...
-                </span>
-              ) : (
-                'ОТПРАВИТЬ ФЛАГ'
-              )}
-            </Button>
-          </form>
+          )}
+
+          {!isCompleted && (
+            <>
+              <div className="mb-6 p-4 rounded-lg bg-cyan-400/10 border border-cyan-400/30">
+                <p className="text-cyan-200/90 text-sm flex items-center gap-2">
+                  <span className="text-cyan-300 font-semibold">Формат:</span>
+                  <span className="font-mono text-cyan-300 bg-black/30 px-3 py-1 rounded border border-cyan-400/50">
+                    ENIGMA&#123;...&#125;
+                  </span>
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-cyan-300/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <Input
+                      type="text"
+                      value={flag}
+                      onChange={(e) => setFlag(e.target.value)}
+                      placeholder="ENIGMA{ваш_флаг_здесь}"
+                      className="relative w-full text-xl font-mono text-center py-5 bg-[#0f0f1a]/80 border-2 border-cyan-400/50 focus:border-cyan-400 focus:shadow-[0_0_30px_rgba(0,255,255,0.5)] transition-all rounded-lg"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-gradient-to-r from-cyan-400 to-cyan-300 text-black hover:from-cyan-300 hover:to-cyan-200 shadow-[0_0_30px_rgba(0,255,255,0.6)] transition-all hover:scale-[1.02] text-xl font-bold py-5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                        Проверка...
+                      </span>
+                    ) : (
+                      'ОТПРАВИТЬ ФЛАГ'
+                    )}
+                  </Button>
+                </form>
+            </>
+          )}
+
+          {isCompleted && (
+            <div className="text-center py-4">
+              <Button
+                onClick={() => navigate('/enigma')}
+                className="w-full bg-green-500 text-white hover:bg-green-400 shadow-[0_0_30px_rgba(34,197,94,0.6)] transition-all hover:scale-[1.02] text-xl font-bold py-5"
+              >
+                ВЕРНУТЬСЯ К КАТЕГОРИЯМ
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Hint Section */}
         <div className="mt-6 p-6 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-400/5 border border-amber-400/30 backdrop-blur-sm">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">💡</span>
+            <Zap className="w-6 h-6 text-amber-300" />
             <div>
               <p className="text-amber-200 font-semibold mb-1">Совет</p>
               <p className="text-amber-200/80 text-sm">

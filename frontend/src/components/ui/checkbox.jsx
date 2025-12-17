@@ -1,32 +1,36 @@
 import PropTypes from 'prop-types';
 
-export const Checkbox = ({
-  className = '',
-  checked = false,
-  onCheckedChange,
-  id,
-}) => (
-  <input
-    id={id}
-    type="checkbox"
-    className={[
-      'h-4 w-4 rounded border-cyan-400/60 bg-[#0a0a0f] text-cyan-400',
-      'focus:ring-cyan-400 focus:outline-none',
-      className,
-    ]
-      .filter(Boolean)
-      .join(' ')}
-    checked={checked}
-    onChange={(e) => onCheckedChange?.(e.target.checked)}
-  />
-);
+export const Checkbox = ({ id, checked, onChange, disabled, className = '', label, ...rest }) => {
+  return (
+    <div className={`flex items-center gap-3 ${className}`}>
+      <input
+        type="checkbox"
+        id={id}
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+        className="cursor-pointer"
+        {...rest}
+      />
+      {label && (
+        <label 
+          htmlFor={id} 
+          className="text-cyan-200 cursor-pointer select-none"
+        >
+          {label}
+        </label>
+      )}
+    </div>
+  );
+};
 
 Checkbox.propTypes = {
-  className: PropTypes.string,
+  id: PropTypes.string.isRequired,
   checked: PropTypes.bool,
-  onCheckedChange: PropTypes.func,
-  id: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+  className: PropTypes.string,
+  label: PropTypes.string,
 };
 
 export default Checkbox;
-

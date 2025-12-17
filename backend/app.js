@@ -4,6 +4,9 @@ const balanceRoutes = require('./routes/balance');
 const profileRoutes = require('./routes/profile');
 const categoriesRoutes = require('./routes/categories');
 const battlepassRoutes = require('./routes/battlepass');
+const leaderboardRoutes = require('./routes/leaderboard');
+const levelSettingsRoutes = require('./routes/levelSettings');
+const levelExperienceRequirementsRoutes = require('./routes/levelExperienceRequirements');
 const createUsersTable = require('./migrations/createUsersTable');
 const createUserBalanceTable = require('./migrations/createUserBalanceTable');
 const addProfileFields = require('./migrations/addProfileFields');
@@ -13,6 +16,16 @@ const addLevelFields = require('./migrations/addLevelFields');
 const createBattlePassTable = require('./migrations/createBattlePassTable');
 const createUserBattlePassTable = require('./migrations/createUserBattlePassTable');
 const removeExperienceFromBattlePass = require('./migrations/removeExperienceFromBattlePass');
+const createUserLevelProgressTable = require('./migrations/createUserLevelProgressTable');
+const addCategoryIdToUserLevelProgress = require('./migrations/addCategoryIdToUserLevelProgress');
+const addExperienceToUsers = require('./migrations/addExperienceToUsers');
+const updateAvatarDefault = require('./migrations/updateAvatarDefault');
+const updateAvatarFieldSize = require('./migrations/updateAvatarFieldSize');
+const updateCategoryIconFieldSize = require('./migrations/updateCategoryIconFieldSize');
+const createLevelSettingsTable = require('./migrations/createLevelSettingsTable');
+const createLevelExperienceRequirementsTable = require('./migrations/createLevelExperienceRequirementsTable');
+const addLevelPaymentFields = require('./migrations/addLevelPaymentFields');
+const createUserPurchasedLevelsTable = require('./migrations/createUserPurchasedLevelsTable');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +54,16 @@ addLevelFields();
 createBattlePassTable();
 createUserBattlePassTable();
 removeExperienceFromBattlePass();
+createUserLevelProgressTable();
+addCategoryIdToUserLevelProgress();
+addExperienceToUsers();
+updateAvatarDefault();
+updateAvatarFieldSize();
+updateCategoryIconFieldSize();
+createLevelSettingsTable();
+createLevelExperienceRequirementsTable();
+addLevelPaymentFields();
+createUserPurchasedLevelsTable();
 
 // Маршруты
 app.use('/auth', authRoutes);
@@ -48,6 +71,9 @@ app.use('/balance', balanceRoutes);
 app.use('/profile', profileRoutes);
 app.use('/categories', categoriesRoutes);
 app.use('/battlepass', battlepassRoutes);
+app.use('/leaderboard', leaderboardRoutes);
+app.use('/level-settings', levelSettingsRoutes);
+app.use('/level-experience-requirements', levelExperienceRequirementsRoutes);
 
 // 404
 app.use('*', (req, res) => {

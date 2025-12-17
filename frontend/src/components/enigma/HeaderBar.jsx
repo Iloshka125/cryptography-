@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
-import { Coins, Zap, ShoppingCart, Medal, Grid3x3, Star, Trophy, Gamepad2 } from '../IconSet.jsx';
+import { Coins, Zap, ShoppingCart, Medal, Grid3x3, Star, Trophy, Gamepad2, User, Settings, renderIconByValue } from '../IconSet.jsx';
 import Button from '../ui/button.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 
@@ -38,9 +38,11 @@ const HeaderBar = ({
         </button>
         <button
           onClick={() => navigate('/profile')}
-          className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-cyan-300 rounded-full border border-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.5)] hover:shadow-[0_0_25px_rgba(0,255,255,0.8)] transition-all flex items-center justify-center text-xl cursor-pointer"
+          className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-cyan-300 rounded-full border border-cyan-400 shadow-[0_0_15px_rgba(0,255,255,0.5)] hover:shadow-[0_0_25px_rgba(0,255,255,0.8)] transition-all flex items-center justify-center cursor-pointer"
         >
-          {userAvatar}
+          {typeof userAvatar === 'string' && userAvatar
+            ? renderIconByValue(userAvatar, 'w-6 h-6 text-black')
+            : renderIconByValue('target', 'w-6 h-6 text-black')}
         </button>
       </div>
     </div>
@@ -107,7 +109,7 @@ const HeaderBar = ({
             onClick={() => navigate('/admin')}
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-400 hover:to-pink-400 border border-purple-400"
           >
-            <span>⚙️</span>
+            <Settings className="w-4 h-4" />
             <span>АДМИН</span>
           </Button>
         )}
