@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const authRoutes = require('./routes/auth');
 const balanceRoutes = require('./routes/balance');
 const profileRoutes = require('./routes/profile');
@@ -25,6 +26,7 @@ const updateCategoryIconFieldSize = require('./migrations/updateCategoryIconFiel
 const createLevelSettingsTable = require('./migrations/createLevelSettingsTable');
 const createLevelExperienceRequirementsTable = require('./migrations/createLevelExperienceRequirementsTable');
 const addLevelPaymentFields = require('./migrations/addLevelPaymentFields');
+const addTaskFileFieldToLevels = require('./migrations/addTaskFileFieldToLevels');
 const createUserPurchasedLevelsTable = require('./migrations/createUserPurchasedLevelsTable');
 
 const app = express();
@@ -32,6 +34,8 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+// Статические файлы для скачивания
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // CORS для работы с фронтендом
 app.use((req, res, next) => {
@@ -63,6 +67,7 @@ updateCategoryIconFieldSize();
 createLevelSettingsTable();
 createLevelExperienceRequirementsTable();
 addLevelPaymentFields();
+addTaskFileFieldToLevels();
 createUserPurchasedLevelsTable();
 
 // Маршруты

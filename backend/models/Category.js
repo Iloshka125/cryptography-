@@ -64,6 +64,7 @@ class Category {
               'name', l.name,
               'description', l.description,
               'task', l.task,
+              'task_file_path', l.task_file_path,
               'flag', l.flag,
               'order_index', l.order_index,
               'difficulty', l.difficulty,

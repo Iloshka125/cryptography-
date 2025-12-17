@@ -52,6 +52,8 @@ const AdminPage = () => {
     name: '',
     description: '',
     task: '',
+    taskFile: null,
+    useTaskFile: false,
     flag: '',
     categoryId: null,
     difficulty: 'medium',
@@ -243,6 +245,8 @@ const AdminPage = () => {
       name: level.name,
       description: level.description || '',
       task: level.task || '',
+      taskFile: null,
+      useTaskFile: !!level.task_file_path,
       flag: level.flag || '',
       categoryId: selectedCategory.id,
       difficulty: level.difficulty || 'medium',
@@ -265,10 +269,10 @@ const AdminPage = () => {
     try {
       if (editingLevel) {
         // Редактирование уровня
-        const response = await updateLevel(editingLevel.id, {
+        const updateData = {
           name: levelForm.name,
           description: levelForm.description,
-          task: levelForm.task,
+          task: levelForm.useTaskFile ? null : levelForm.task,
           flag: levelForm.flag,
           difficulty: levelForm.difficulty,
           points: parseInt(levelForm.points),
@@ -276,10 +280,16 @@ const AdminPage = () => {
           orderIndex: parseInt(levelForm.orderIndex) || 1,
           isPaid: levelForm.isPaid,
           price: levelForm.isPaid ? parseInt(levelForm.price) || 0 : 0,
-        });
+        };
+        
+        if (levelForm.useTaskFile && levelForm.taskFile) {
+          updateData.taskFile = levelForm.taskFile;
+        }
+        
+        const response = await updateLevel(editingLevel.id, updateData);
         
         if (response.success) {
-          setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
+          setLevelForm({ name: '', description: '', task: '', taskFile: null, useTaskFile: false, flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
           setEditingLevel(null);
           setIsLevelModalOpen(false);
           showToast('Уровень обновлен!', 'success');
@@ -287,10 +297,10 @@ const AdminPage = () => {
         }
       } else {
         // Создание уровня
-        const response = await createLevel(selectedCategory.id, {
+        const createData = {
           name: levelForm.name,
           description: levelForm.description,
-          task: levelForm.task,
+          task: levelForm.useTaskFile ? null : levelForm.task,
           flag: levelForm.flag,
           difficulty: levelForm.difficulty,
           points: parseInt(levelForm.points),
@@ -298,10 +308,16 @@ const AdminPage = () => {
           orderIndex: parseInt(levelForm.orderIndex) || 1,
           isPaid: levelForm.isPaid,
           price: levelForm.isPaid ? parseInt(levelForm.price) || 0 : 0,
-        });
+        };
+        
+        if (levelForm.useTaskFile && levelForm.taskFile) {
+          createData.taskFile = levelForm.taskFile;
+        }
+        
+        const response = await createLevel(selectedCategory.id, createData);
         
         if (response.success) {
-          setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
+          setLevelForm({ name: '', description: '', task: '', taskFile: null, useTaskFile: false, flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
           setIsLevelModalOpen(false);
           showToast('Уровень создан!', 'success');
           await loadCategories();
@@ -780,7 +796,7 @@ const AdminPage = () => {
                   onClick={() => {
                     setIsLevelModalOpen(false);
                     setEditingLevel(null);
-                    setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
+                    setLevelForm({ name: '', description: '', task: '', taskFile: null, useTaskFile: false, flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
                   }}
                   className="bg-transparent hover:bg-red-500/20 text-red-400"
                 >
@@ -808,12 +824,86 @@ const AdminPage = () => {
                   />
                 </div>
                 <div>
-                  <Label className="text-cyan-200">Задание</Label>
-                  <Textarea
-                    value={levelForm.task}
-                    onChange={(e) => setLevelForm({ ...levelForm, task: e.target.value })}
-                    required
-                  />
+                  <Label className="text-cyan-200 mb-2 block">Задание</Label>
+                  <div className="mb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        type="checkbox"
+                        id="useTaskFile"
+                        checked={levelForm.useTaskFile || false}
+                        onChange={(e) => {
+                          const useFile = e.target.checked;
+                          // Если включаем файл и есть текст, создаем файл из текста
+                          if (useFile && levelForm.task && !levelForm.taskFile) {
+                            const blob = new Blob([levelForm.task], { type: 'text/plain' });
+                            const file = new File([blob], `task-${Date.now()}.txt`, { type: 'text/plain' });
+                            setLevelForm({ ...levelForm, useTaskFile: true, taskFile: file });
+                          } else {
+                            setLevelForm({ ...levelForm, useTaskFile: useFile, task: useFile ? '' : levelForm.task });
+                          }
+                        }}
+                        className="w-5 h-5 rounded border-2 border-cyan-400/60 bg-[#0a0a0f] text-cyan-400 focus:ring-2 focus:ring-cyan-400/70 cursor-pointer"
+                      />
+                      <Label htmlFor="useTaskFile" className="text-cyan-200 cursor-pointer select-none">
+                        Загрузить txt файл вместо текста
+                      </Label>
+                    </div>
+                  </div>
+                  {levelForm.useTaskFile ? (
+                    <div>
+                      <div className="flex gap-2 mb-2">
+                        <input
+                          type="file"
+                          accept=".txt"
+                          onChange={(e) => setLevelForm({ ...levelForm, taskFile: e.target.files[0] || null })}
+                          className="block flex-1 text-sm text-cyan-200 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-cyan-400 file:text-black hover:file:bg-cyan-300 cursor-pointer"
+                          required={levelForm.useTaskFile && !levelForm.taskFile}
+                        />
+                        {levelForm.task && !levelForm.taskFile && (
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              const blob = new Blob([levelForm.task], { type: 'text/plain' });
+                              const file = new File([blob], `task-${Date.now()}.txt`, { type: 'text/plain' });
+                              setLevelForm({ ...levelForm, taskFile: file });
+                            }}
+                            className="bg-cyan-400 text-black hover:bg-cyan-300 whitespace-nowrap"
+                          >
+                            Создать файл из текста
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-cyan-200/60 text-xs mt-1">Разрешены только файлы .txt (максимум 10MB)</p>
+                      {levelForm.taskFile && (
+                        <p className="text-cyan-300 text-sm mt-2">Выбран файл: {levelForm.taskFile.name}</p>
+                      )}
+                      {!levelForm.taskFile && levelForm.task && (
+                        <p className="text-cyan-200/80 text-sm mt-2">Нажмите "Создать файл из текста" или загрузите файл</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <Textarea
+                        value={levelForm.task}
+                        onChange={(e) => setLevelForm({ ...levelForm, task: e.target.value })}
+                        required={!levelForm.useTaskFile}
+                        placeholder="Введите текст задания или загрузите txt файл"
+                      />
+                      {levelForm.task && (
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const blob = new Blob([levelForm.task], { type: 'text/plain' });
+                            const file = new File([blob], `task-${Date.now()}.txt`, { type: 'text/plain' });
+                            setLevelForm({ ...levelForm, useTaskFile: true, taskFile: file });
+                          }}
+                          className="mt-2 bg-cyan-400 text-black hover:bg-cyan-300"
+                        >
+                          Создать txt файл из текста
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label className="text-cyan-200">Флаг (ответ)</Label>

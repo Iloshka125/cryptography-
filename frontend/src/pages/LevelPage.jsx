@@ -236,9 +236,25 @@ const LevelPage = () => {
             </h2>
           </div>
           <div className="p-6 rounded-lg bg-gradient-to-br from-cyan-500/10 to-cyan-400/5 border-2 border-cyan-400/20 shadow-inner">
-            <p className="text-cyan-100 text-lg leading-relaxed whitespace-pre-wrap font-medium">
-              {level.task || 'Задание отсутствует'}
-            </p>
+            {level.taskFilePath ? (
+              <div className="flex flex-col items-center justify-center py-4">
+                <p className="text-cyan-200 mb-4">Задание доступно в виде файла</p>
+                <a
+                  href={`http://localhost:3000/categories/levels/${level.id}/task-file`}
+                  download
+                  className="px-6 py-3 bg-cyan-400 hover:bg-cyan-300 text-black font-bold rounded-lg shadow-[0_0_20px_rgba(0,255,255,0.5)] transition-all hover:scale-105 flex items-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Скачать задание (txt)
+                </a>
+              </div>
+            ) : (
+              <p className="text-cyan-100 text-lg leading-relaxed whitespace-pre-wrap font-medium">
+                {level.task || 'Задание отсутствует'}
+              </p>
+            )}
           </div>
         </div>
 

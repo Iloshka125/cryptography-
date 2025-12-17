@@ -21,7 +21,7 @@ router.post('/register', async (req, res) => {
     
     // Создаем начальный баланс для нового пользователя
     const Balance = require('../models/Balance');
-    await Balance.create(user.id, 1000, 5);
+    await Balance.create(user.id, 0, 0);
     
     res.status(201).json({ 
       message: 'Пользователь успешно зарегистрирован',

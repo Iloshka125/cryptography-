@@ -1,10 +1,13 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const Category = require('../models/Category');
 const Level = require('../models/Level');
 const UserLevelProgress = require('../models/UserLevelProgress');
 const UserPurchasedLevels = require('../models/UserPurchasedLevels');
 const User = require('../models/User');
 const Balance = require('../models/Balance');
+const upload = require('../config/upload');
 const router = express.Router();
 
 // Получить все категории с уровнями
@@ -76,6 +79,7 @@ router.get('/levels/:id', async (req, res) => {
       name: levelWithoutFlag.name,
       description: levelWithoutFlag.description,
       task: levelWithoutFlag.task,
+      taskFilePath: levelWithoutFlag.task_file_path,
       orderIndex: levelWithoutFlag.order_index,
       difficulty: levelWithoutFlag.difficulty,
       points: levelWithoutFlag.points,
@@ -266,7 +270,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Создать уровень в категории (только для админов)
-router.post('/:categoryId/levels', async (req, res) => {
+router.post('/:categoryId/levels', upload.single('taskFile'), async (req, res) => {
   try {
     const { categoryId } = req.params;
     const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price } = req.body;
@@ -281,11 +285,19 @@ router.post('/:categoryId/levels', async (req, res) => {
       return res.status(404).json({ error: 'Категория не найдена' });
     }
     
+    // Обрабатываем загруженный файл
+    let taskFilePath = null;
+    if (req.file) {
+      // Сохраняем относительный путь для БД
+      taskFilePath = `uploads/tasks/${req.file.filename}`;
+    }
+    
     const level = await Level.create({
       categoryId: parseInt(categoryId),
       name,
       description,
-      task,
+      task: taskFilePath ? null : task, // Если есть файл, task = null
+      taskFilePath,
       flag,
       orderIndex,
       difficulty,
@@ -303,6 +315,7 @@ router.post('/:categoryId/levels', async (req, res) => {
         name: level.name,
         description: level.description,
         task: level.task,
+        taskFilePath: level.task_file_path,
         flag: level.flag,
         orderIndex: level.order_index,
         difficulty: level.difficulty,
@@ -319,12 +332,30 @@ router.post('/:categoryId/levels', async (req, res) => {
 });
 
 // Обновить уровень (только для админов)
-router.put('/levels/:id', async (req, res) => {
+router.put('/levels/:id', upload.single('taskFile'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price } = req.body;
     
-    const updateData = { name, description, task, flag, orderIndex, difficulty, points, estimatedTime };
+    // Обрабатываем загруженный файл
+    let taskFilePath = undefined;
+    if (req.file) {
+      // Получаем текущий уровень для удаления старого файла
+      const currentLevel = await Level.findById(id);
+      if (currentLevel && currentLevel.task_file_path) {
+        const oldFilePath = path.join(__dirname, '..', currentLevel.task_file_path);
+        try {
+          if (fs.existsSync(oldFilePath)) {
+            fs.unlinkSync(oldFilePath);
+          }
+        } catch (err) {
+          console.error('Ошибка удаления старого файла:', err);
+        }
+      }
+      taskFilePath = `uploads/tasks/${req.file.filename}`;
+    }
+    
+    const updateData = { name, description, task, taskFilePath, flag, orderIndex, difficulty, points, estimatedTime };
     if (isPaid !== undefined) {
       updateData.isPaid = isPaid;
       updateData.price = isPaid ? (price || 0) : 0;
@@ -346,6 +377,7 @@ router.put('/levels/:id', async (req, res) => {
         name: level.name,
         description: level.description,
         task: level.task,
+        taskFilePath: level.task_file_path,
         flag: level.flag,
         orderIndex: level.order_index,
         difficulty: level.difficulty,
@@ -436,6 +468,33 @@ router.post('/levels/:id/purchase', async (req, res) => {
     });
   } catch (err) {
     console.error('Ошибка покупки уровня:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Скачать файл задания уровня
+router.get('/levels/:id/task-file', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const level = await Level.findById(id);
+    
+    if (!level) {
+      return res.status(404).json({ error: 'Уровень не найден' });
+    }
+    
+    if (!level.task_file_path) {
+      return res.status(404).json({ error: 'Файл задания не найден' });
+    }
+    
+    const filePath = path.join(__dirname, '..', level.task_file_path);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Файл не найден на сервере' });
+    }
+    
+    res.download(filePath, `task-level-${id}.txt`);
+  } catch (err) {
+    console.error('Ошибка скачивания файла задания:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });

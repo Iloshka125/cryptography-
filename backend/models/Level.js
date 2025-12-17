@@ -2,17 +2,18 @@ const pool = require('../config/database');
 
 class Level {
   // Создать уровень
-  static async create({ categoryId, name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price }) {
+  static async create({ categoryId, name, description, task, taskFilePath, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price }) {
     const query = `
-      INSERT INTO levels (category_id, name, description, task, flag, order_index, difficulty, points, estimated_time, is_paid, price)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      INSERT INTO levels (category_id, name, description, task, task_file_path, flag, order_index, difficulty, points, estimated_time, is_paid, price)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *;
     `;
     const values = [
       categoryId,
       name,
       description || null,
-      task || null,
+      taskFilePath ? null : (task || null), // Если есть файл, task = null
+      taskFilePath || null,
       flag || null,
       orderIndex || 0,
       difficulty || 'medium',
@@ -44,7 +45,7 @@ class Level {
   }
 
   // Обновить уровень
-  static async update(levelId, { name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price }) {
+  static async update(levelId, { name, description, task, taskFilePath, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price }) {
     const updates = [];
     const values = [];
     let paramIndex = 1;
@@ -57,9 +58,20 @@ class Level {
       updates.push(`description = $${paramIndex++}`);
       values.push(description);
     }
-    if (task !== undefined) {
+    if (taskFilePath !== undefined) {
+      // Если загружается файл, очищаем поле task
+      updates.push(`task_file_path = $${paramIndex++}`);
+      values.push(taskFilePath || null);
+      if (taskFilePath) {
+        updates.push(`task = NULL`);
+      }
+    }
+    if (task !== undefined && taskFilePath === undefined) {
+      // Обновляем task только если не загружается файл
       updates.push(`task = $${paramIndex++}`);
       values.push(task);
+      // Если обновляем task напрямую, очищаем файл
+      updates.push(`task_file_path = NULL`);
     }
     if (flag !== undefined) {
       updates.push(`flag = $${paramIndex++}`);

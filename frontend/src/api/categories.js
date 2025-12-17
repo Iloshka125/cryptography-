@@ -102,31 +102,62 @@ export async function deleteCategory(categoryId) {
  * Создать уровень в категории
  * @param {number|string} categoryId - ID категории
  * @param {object} levelData - Данные уровня
- * @param {string} levelData.name - Название
- * @param {string} [levelData.description] - Описание
- * @param {string} [levelData.task] - Задание
- * @param {string} [levelData.flag] - Флаг (ответ)
- * @param {number} [levelData.orderIndex] - Порядок
+ * @param {File} [levelData.taskFile] - Файл задания (txt)
  * @returns {Promise<object>} - Созданный уровень
  */
 export async function createLevel(categoryId, levelData) {
-  return apiRequest(`/categories/${categoryId}/levels`, {
-    method: 'POST',
-    body: levelData,
+  const formData = new FormData();
+  
+  Object.keys(levelData).forEach(key => {
+    if (key === 'taskFile' && levelData[key]) {
+      formData.append('taskFile', levelData[key]);
+    } else if (key !== 'taskFile') {
+      formData.append(key, levelData[key]);
+    }
   });
+  
+  const API_BASE_URL = 'http://localhost:3000';
+  const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/levels`, {
+    method: 'POST',
+    body: formData,
+  });
+  
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+  }
+  return data;
 }
 
 /**
  * Обновить уровень
  * @param {number|string} levelId - ID уровня
  * @param {object} levelData - Данные для обновления
+ * @param {File} [levelData.taskFile] - Файл задания (txt)
  * @returns {Promise<object>} - Обновленный уровень
  */
 export async function updateLevel(levelId, levelData) {
-  return apiRequest(`/categories/levels/${levelId}`, {
-    method: 'PUT',
-    body: levelData,
+  const formData = new FormData();
+  
+  Object.keys(levelData).forEach(key => {
+    if (key === 'taskFile' && levelData[key]) {
+      formData.append('taskFile', levelData[key]);
+    } else if (key !== 'taskFile') {
+      formData.append(key, levelData[key]);
+    }
   });
+  
+  const API_BASE_URL = 'http://localhost:3000';
+  const response = await fetch(`${API_BASE_URL}/categories/levels/${levelId}`, {
+    method: 'PUT',
+    body: formData,
+  });
+  
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+  }
+  return data;
 }
 
 /**
