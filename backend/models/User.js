@@ -10,15 +10,40 @@ class User {
       VALUES ($1, $2, $3, $4, 0, 1)
       RETURNING id, nickname, email, phone, avatar, level, experience, is_admin;
     `;
-    const values = [nickname, email, phone, hashedPassword];
+    // Конвертируем пустые строки в null для уникальности
+    const values = [
+      nickname, 
+      email === '' ? null : email, 
+      phone === '' ? null : phone, 
+      hashedPassword
+    ];
     const res = await pool.query(query, values);
     return res.rows[0];
   }
 
   // Найти пользователя по email или phone
   static async findByEmailOrPhone(email, phone) {
-    const query = `SELECT id, nickname, email, phone, password_hash, avatar, level, experience, is_admin FROM users WHERE email = $1 OR phone = $2`;
-    const res = await pool.query(query, [email, phone]);
+    // Не ищем по пустым строкам, только по реальным значениям
+    const conditions = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (email && email !== '') {
+      conditions.push(`email = $${paramIndex++}`);
+      values.push(email);
+    }
+
+    if (phone && phone !== '') {
+      conditions.push(`phone = $${paramIndex++}`);
+      values.push(phone);
+    }
+
+    if (conditions.length === 0) {
+      return null;
+    }
+
+    const query = `SELECT id, nickname, email, phone, password_hash, avatar, level, experience, is_admin FROM users WHERE ${conditions.join(' OR ')} LIMIT 1`;
+    const res = await pool.query(query, values);
     return res.rows[0] || null;
   }
 
@@ -39,11 +64,11 @@ class User {
       conditions.push(`nickname = $${paramIndex++}`);
       values.push(nickname);
     }
-    if (email) {
+    if (email && email !== '') {
       conditions.push(`email = $${paramIndex++}`);
       values.push(email);
     }
-    if (phone) {
+    if (phone && phone !== '') {
       conditions.push(`phone = $${paramIndex++}`);
       values.push(phone);
     }
@@ -102,12 +127,14 @@ class User {
       values.push(avatar);
     }
     if (email !== undefined) {
+      // Конвертируем пустую строку в null для уникальности
       updates.push(`email = $${paramIndex++}`);
-      values.push(email);
+      values.push(email === '' ? null : email);
     }
     if (phone !== undefined) {
+      // Конвертируем пустую строку в null для уникальности
       updates.push(`phone = $${paramIndex++}`);
-      values.push(phone);
+      values.push(phone === '' ? null : phone);
     }
 
     if (updates.length === 0) {
@@ -125,6 +152,24 @@ class User {
     `;
     
     const res = await pool.query(query, values);
+    return res.rows[0] || null;
+  }
+
+  // Сравнить пароль
+  static async comparePassword(password, hashedPassword) {
+    return await bcrypt.compare(password, hashedPassword);
+  }
+
+  // Обновить пароль пользователя
+  static async updatePassword(userId, newPassword) {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const query = `
+      UPDATE users
+      SET password_hash = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING id;
+    `;
+    const res = await pool.query(query, [hashedPassword, userId]);
     return res.rows[0] || null;
   }
 }

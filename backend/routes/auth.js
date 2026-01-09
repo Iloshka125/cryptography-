@@ -13,11 +13,15 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    if (await User.exists({ nickname, email, phone })) {
+    // Нормализуем пустые строки в null для правильной проверки уникальности
+    const normalizedEmail = email === '' ? null : email;
+    const normalizedPhone = phone === '' ? null : phone;
+    
+    if (await User.exists({ nickname, email: normalizedEmail, phone: normalizedPhone })) {
       return res.status(409).json({ error: 'Пользователь с такими данными уже существует' });
     }
 
-    const user = await User.create({ nickname, email, phone, password });
+    const user = await User.create({ nickname, email: normalizedEmail, phone: normalizedPhone, password });
     
     // Создаем начальный баланс для нового пользователя
     const Balance = require('../models/Balance');

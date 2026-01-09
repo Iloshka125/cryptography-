@@ -19,8 +19,8 @@ class Level {
       difficulty || 'medium',
       points || 100,
       estimatedTime || '15 мин',
-      isPaid === true ? true : false,
-      isPaid === true ? (price || 0) : 0,
+      isPaid === true || isPaid === 'true' ? true : false,
+      (isPaid === true || isPaid === 'true') ? (parseInt(price) || 0) : 0,
     ];
     const res = await pool.query(query, values);
     return res.rows[0];
@@ -59,19 +59,22 @@ class Level {
       values.push(description);
     }
     if (taskFilePath !== undefined) {
-      // Если загружается файл, очищаем поле task
+      // Если загружается файл (или очищается путь), обновляем task_file_path
       updates.push(`task_file_path = $${paramIndex++}`);
       values.push(taskFilePath || null);
       if (taskFilePath) {
+        // Если устанавливается файл, очищаем текстовое задание
         updates.push(`task = NULL`);
       }
     }
     if (task !== undefined && taskFilePath === undefined) {
-      // Обновляем task только если не загружается файл
+      // Обновляем task только если taskFilePath не передан
       updates.push(`task = $${paramIndex++}`);
       values.push(task);
-      // Если обновляем task напрямую, очищаем файл
-      updates.push(`task_file_path = NULL`);
+      // Если task задан явно (не null), а taskFilePath не передан, очищаем файл
+      if (task !== null) {
+        updates.push(`task_file_path = NULL`);
+      }
     }
     if (flag !== undefined) {
       updates.push(`flag = $${paramIndex++}`);

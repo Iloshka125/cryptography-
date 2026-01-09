@@ -106,13 +106,13 @@ const LevelPage = () => {
           // Обновляем статус уровня как пройденного
           setIsCompleted(true);
           
-          setTimeout(() => {
-            navigate(`/enigma`);
+        setTimeout(() => {
+          navigate(`/enigma`);
           }, 2000);
-        } else {
+      } else {
           showToast(response.message || 'Неверный флаг. Попробуйте еще раз.', 'error');
-          setIsSubmitting(false);
-        }
+        setIsSubmitting(false);
+      }
       }
     } catch (error) {
       console.error('Ошибка проверки флага:', error);
@@ -253,7 +253,7 @@ const LevelPage = () => {
             ) : (
               <p className="text-cyan-100 text-lg leading-relaxed whitespace-pre-wrap font-medium">
                 {level.task || 'Задание отсутствует'}
-              </p>
+            </p>
             )}
           </div>
         </div>
@@ -278,7 +278,7 @@ const LevelPage = () => {
               {isCompleted ? 'Уровень пройден!' : 'Введите флаг'}
             </h2>
           </div>
-
+          
           {isCompleted && (
             <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-400/30">
               <p className="text-green-300 font-semibold text-center">
@@ -289,42 +289,42 @@ const LevelPage = () => {
 
           {!isCompleted && (
             <>
-              <div className="mb-6 p-4 rounded-lg bg-cyan-400/10 border border-cyan-400/30">
-                <p className="text-cyan-200/90 text-sm flex items-center gap-2">
-                  <span className="text-cyan-300 font-semibold">Формат:</span>
-                  <span className="font-mono text-cyan-300 bg-black/30 px-3 py-1 rounded border border-cyan-400/50">
-                    ENIGMA&#123;...&#125;
-                  </span>
-                </p>
-              </div>
+          <div className="mb-6 p-4 rounded-lg bg-cyan-400/10 border border-cyan-400/30">
+            <p className="text-cyan-200/90 text-sm flex items-center gap-2">
+              <span className="text-cyan-300 font-semibold">Формат:</span>
+              <span className="font-mono text-cyan-300 bg-black/30 px-3 py-1 rounded border border-cyan-400/50">
+                ENIGMA&#123;...&#125;
+              </span>
+            </p>
+          </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-cyan-300/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <Input
-                      type="text"
-                      value={flag}
-                      onChange={(e) => setFlag(e.target.value)}
-                      placeholder="ENIGMA{ваш_флаг_здесь}"
-                      className="relative w-full text-xl font-mono text-center py-5 bg-[#0f0f1a]/80 border-2 border-cyan-400/50 focus:border-cyan-400 focus:shadow-[0_0_30px_rgba(0,255,255,0.5)] transition-all rounded-lg"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-cyan-400 to-cyan-300 text-black hover:from-cyan-300 hover:to-cyan-200 shadow-[0_0_30px_rgba(0,255,255,0.6)] transition-all hover:scale-[1.02] text-xl font-bold py-5 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                        Проверка...
-                      </span>
-                    ) : (
-                      'ОТПРАВИТЬ ФЛАГ'
-                    )}
-                  </Button>
-                </form>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-cyan-300/20 rounded-lg blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <Input
+                type="text"
+                value={flag}
+                onChange={(e) => setFlag(e.target.value)}
+                placeholder="ENIGMA{ваш_флаг_здесь}"
+                className="relative w-full text-xl font-mono text-center py-5 bg-[#0f0f1a]/80 border-2 border-cyan-400/50 focus:border-cyan-400 focus:shadow-[0_0_30px_rgba(0,255,255,0.5)] transition-all rounded-lg"
+                disabled={isSubmitting}
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-cyan-400 to-cyan-300 text-black hover:from-cyan-300 hover:to-cyan-200 shadow-[0_0_30px_rgba(0,255,255,0.6)] transition-all hover:scale-[1.02] text-xl font-bold py-5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                  Проверка...
+                </span>
+              ) : (
+                'ОТПРАВИТЬ ФЛАГ'
+              )}
+            </Button>
+          </form>
             </>
           )}
 

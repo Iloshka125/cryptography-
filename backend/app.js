@@ -28,6 +28,7 @@ const createLevelExperienceRequirementsTable = require('./migrations/createLevel
 const addLevelPaymentFields = require('./migrations/addLevelPaymentFields');
 const addTaskFileFieldToLevels = require('./migrations/addTaskFileFieldToLevels');
 const createUserPurchasedLevelsTable = require('./migrations/createUserPurchasedLevelsTable');
+const normalizeEmptyPhoneAndEmail = require('./migrations/normalizeEmptyPhoneAndEmail');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,26 +50,34 @@ app.use((req, res, next) => {
 });
 
 // Создание таблиц при старте
-createUsersTable();
-createUserBalanceTable();
-addProfileFields();
-addAdminField();
-createCategoriesAndLevelsTables();
-addLevelFields();
-createBattlePassTable();
-createUserBattlePassTable();
-removeExperienceFromBattlePass();
-createUserLevelProgressTable();
-addCategoryIdToUserLevelProgress();
-addExperienceToUsers();
-updateAvatarDefault();
-updateAvatarFieldSize();
-updateCategoryIconFieldSize();
-createLevelSettingsTable();
-createLevelExperienceRequirementsTable();
-addLevelPaymentFields();
-addTaskFileFieldToLevels();
-createUserPurchasedLevelsTable();
+(async () => {
+  try {
+    await createUsersTable();
+    await createUserBalanceTable();
+    await addProfileFields();
+    await addAdminField();
+    await createCategoriesAndLevelsTables();
+    await addLevelFields();
+    await createBattlePassTable();
+    await createUserBattlePassTable();
+    await removeExperienceFromBattlePass();
+    await createUserLevelProgressTable();
+    await addCategoryIdToUserLevelProgress();
+    await addExperienceToUsers();
+    await updateAvatarDefault();
+    await updateAvatarFieldSize();
+    await updateCategoryIconFieldSize();
+    await createLevelSettingsTable();
+    await createLevelExperienceRequirementsTable();
+    await addLevelPaymentFields();
+    await addTaskFileFieldToLevels();
+    await createUserPurchasedLevelsTable();
+    await normalizeEmptyPhoneAndEmail();
+  } catch (err) {
+    console.error('Ошибка выполнения миграций:', err);
+    process.exit(1);
+  }
+})();
 
 // Маршруты
 app.use('/auth', authRoutes);

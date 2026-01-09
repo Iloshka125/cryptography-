@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 const Category = require('../models/Category');
 const Level = require('../models/Level');
 const UserLevelProgress = require('../models/UserLevelProgress');
@@ -287,24 +288,30 @@ router.post('/:categoryId/levels', upload.single('taskFile'), async (req, res) =
     
     // Обрабатываем загруженный файл
     let taskFilePath = null;
+    let finalTask = null;
     if (req.file) {
       // Сохраняем относительный путь для БД
       taskFilePath = `uploads/tasks/${req.file.filename}`;
+      // Если есть файл, не используем текстовое задание
+      finalTask = null;
+    } else {
+      // Если файла нет, используем текстовое задание
+      finalTask = task || null;
     }
     
     const level = await Level.create({
       categoryId: parseInt(categoryId),
       name,
-      description,
-      task: taskFilePath ? null : task, // Если есть файл, task = null
+      description: description || null,
+      task: finalTask,
       taskFilePath,
-      flag,
-      orderIndex,
-      difficulty,
-      points,
-      estimatedTime,
-      isPaid: isPaid || false,
-      price: isPaid ? (price || 0) : 0,
+      flag: flag || null,
+      orderIndex: orderIndex ? parseInt(orderIndex) : 0,
+      difficulty: difficulty || 'medium',
+      points: points ? parseInt(points) : 100,
+      estimatedTime: estimatedTime || '15 мин',
+      isPaid: isPaid === 'true' || isPaid === true || false,
+      price: (isPaid === 'true' || isPaid === true) ? (parseInt(price) || 0) : 0,
     });
     
     res.status(201).json({
@@ -326,6 +333,16 @@ router.post('/:categoryId/levels', upload.single('taskFile'), async (req, res) =
       },
     });
   } catch (err) {
+    // Обработка ошибок multer
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'Файл слишком большой (максимум 10MB)' });
+      }
+      return res.status(400).json({ error: `Ошибка загрузки файла: ${err.message}` });
+    }
+    if (err.message && err.message.includes('Разрешены только файлы')) {
+      return res.status(400).json({ error: err.message });
+    }
     console.error('Ошибка создания уровня:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
@@ -339,6 +356,8 @@ router.put('/levels/:id', upload.single('taskFile'), async (req, res) => {
     
     // Обрабатываем загруженный файл
     let taskFilePath = undefined;
+    let finalTask = task;
+    
     if (req.file) {
       // Получаем текущий уровень для удаления старого файла
       const currentLevel = await Level.findById(id);
@@ -353,14 +372,43 @@ router.put('/levels/:id', upload.single('taskFile'), async (req, res) => {
         }
       }
       taskFilePath = `uploads/tasks/${req.file.filename}`;
+      // Если загружен файл, очищаем текстовое задание
+      finalTask = null;
+    } else if (task !== undefined) {
+      // Если обновляется текстовое задание без файла, получаем текущий уровень
+      // и удаляем файл, если он был
+      const currentLevel = await Level.findById(id);
+      if (currentLevel && currentLevel.task_file_path) {
+        const oldFilePath = path.join(__dirname, '..', currentLevel.task_file_path);
+        try {
+          if (fs.existsSync(oldFilePath)) {
+            fs.unlinkSync(oldFilePath);
+          }
+        } catch (err) {
+          console.error('Ошибка удаления старого файла:', err);
+        }
+        // Очищаем путь к файлу, так как теперь используется текст
+        taskFilePath = null;
+      }
     }
     
-    const updateData = { name, description, task, taskFilePath, flag, orderIndex, difficulty, points, estimatedTime };
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description || null;
+    if (finalTask !== undefined) updateData.task = finalTask;
+    if (taskFilePath !== undefined) updateData.taskFilePath = taskFilePath;
+    if (flag !== undefined) updateData.flag = flag || null;
+    if (orderIndex !== undefined) updateData.orderIndex = orderIndex ? parseInt(orderIndex) : undefined;
+    if (difficulty !== undefined) updateData.difficulty = difficulty;
+    if (points !== undefined) updateData.points = points ? parseInt(points) : undefined;
+    if (estimatedTime !== undefined) updateData.estimatedTime = estimatedTime;
+    
     if (isPaid !== undefined) {
-      updateData.isPaid = isPaid;
-      updateData.price = isPaid ? (price || 0) : 0;
+      const isPaidBool = isPaid === 'true' || isPaid === true;
+      updateData.isPaid = isPaidBool;
+      updateData.price = isPaidBool ? (parseInt(price) || 0) : 0;
     } else if (price !== undefined) {
-      updateData.price = price;
+      updateData.price = parseInt(price) || 0;
     }
     
     const level = await Level.update(id, updateData);
@@ -388,6 +436,16 @@ router.put('/levels/:id', upload.single('taskFile'), async (req, res) => {
       },
     });
   } catch (err) {
+    // Обработка ошибок multer
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'Файл слишком большой (максимум 10MB)' });
+      }
+      return res.status(400).json({ error: `Ошибка загрузки файла: ${err.message}` });
+    }
+    if (err.message && err.message.includes('Разрешены только файлы')) {
+      return res.status(400).json({ error: err.message });
+    }
     console.error('Ошибка обновления уровня:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
@@ -397,9 +455,24 @@ router.put('/levels/:id', upload.single('taskFile'), async (req, res) => {
 router.delete('/levels/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const level = await Level.delete(id);
     
-    if (!level) {
+    // Получаем уровень перед удалением, чтобы удалить файл, если он есть
+    const level = await Level.findById(id);
+    if (level && level.task_file_path) {
+      const filePath = path.join(__dirname, '..', level.task_file_path);
+      try {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (err) {
+        console.error('Ошибка удаления файла задания:', err);
+        // Продолжаем удаление уровня даже если не удалось удалить файл
+      }
+    }
+    
+    const deletedLevel = await Level.delete(id);
+    
+    if (!deletedLevel) {
       return res.status(404).json({ error: 'Уровень не найден' });
     }
     

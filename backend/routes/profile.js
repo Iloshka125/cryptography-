@@ -83,25 +83,35 @@ router.post('/update', async (req, res) => {
     }
     
     // Проверяем уникальность nickname, email, phone
-    if (nickname || email || phone) {
+    if (nickname || email !== undefined || phone !== undefined) {
       const existingUser = await User.findById(userId);
+      // Нормализуем пустые строки в null
+      const normalizedEmail = email === '' ? null : (email || existingUser.email);
+      const normalizedPhone = phone === '' ? null : (phone || existingUser.phone);
+      
       const checkData = {
         nickname: nickname || existingUser.nickname,
-        email: email || existingUser.email,
-        phone: phone || existingUser.phone,
+        email: normalizedEmail,
+        phone: normalizedPhone,
       };
       
-      const exists = await User.exists(checkData);
-      if (exists) {
-        // Проверяем, что это не тот же пользователь
-        const user = await User.findByEmailOrPhone(checkData.email, checkData.phone);
-        if (user && user.id !== userId) {
-          return res.status(409).json({ error: 'Пользователь с такими данными уже существует' });
+      // Проверяем только непустые значения
+      if (checkData.nickname || checkData.email || checkData.phone) {
+        const exists = await User.exists(checkData);
+        if (exists) {
+          // Проверяем, что это не тот же пользователь
+          const user = await User.findByEmailOrPhone(checkData.email, checkData.phone);
+          if (user && user.id !== userId) {
+            return res.status(409).json({ error: 'Пользователь с такими данными уже существует' });
+          }
         }
       }
     }
     
-    const updatedUser = await User.update(userId, { nickname, avatar, email, phone });
+    // Нормализуем пустые строки в null перед обновлением
+    const normalizedEmail = email === '' ? null : email;
+    const normalizedPhone = phone === '' ? null : phone;
+    const updatedUser = await User.update(userId, { nickname, avatar, email: normalizedEmail, phone: normalizedPhone });
     
     if (!updatedUser) {
       return res.status(404).json({ error: 'Пользователь не найден' });
