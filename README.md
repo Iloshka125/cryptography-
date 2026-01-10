@@ -35,14 +35,64 @@
 
 ## 🚀 Быстрый старт
 
-### 1. Клонирование репозитория
+### Вариант 1: Запуск с Docker (Рекомендуется) 🐳
+
+Самый простой способ запустить весь проект одной командой:
+
+```bash
+# Клонируйте репозиторий
+git clone <repository-url>
+cd cryptography-
+
+# Запустите все сервисы (PostgreSQL, Backend, Frontend)
+docker-compose up -d
+
+# Проверьте статус контейнеров
+docker-compose ps
+
+# Просмотрите логи
+docker-compose logs -f
+```
+
+После запуска:
+- **Frontend**: http://localhost
+- **Backend API**: http://localhost:3000
+- **PostgreSQL**: localhost:5432
+
+Остановка всех сервисов:
+```bash
+docker-compose down
+```
+
+Остановка с удалением данных:
+```bash
+docker-compose down -v
+```
+
+#### Режим разработки с Docker:
+
+Для разработки с hot-reload используйте:
+
+```bash
+# Запустите только PostgreSQL и Backend
+docker-compose -f docker-compose.dev.yml up -d
+
+# Frontend запускайте локально для лучшего опыта разработки
+cd frontend
+npm install
+npm run dev
+```
+
+### Вариант 2: Локальный запуск (без Docker)
+
+#### 1. Клонирование репозитория
 
 ```bash
 git clone <repository-url>
 cd cryptography-
 ```
 
-### 2. Настройка Backend
+#### 2. Настройка Backend
 
 ```bash
 # Перейдите в папку backend
@@ -76,7 +126,7 @@ npm run dev
 
 Backend будет доступен на `http://localhost:3000`
 
-### 3. Настройка Frontend
+#### 3. Настройка Frontend
 
 ```bash
 # Откройте новый терминал и перейдите в папку frontend
@@ -118,7 +168,30 @@ cryptography-/
 
 ## 🔧 Основные команды
 
-### Backend:
+### Docker команды:
+
+```bash
+# Запуск всех сервисов
+docker-compose up -d
+
+# Остановка всех сервисов
+docker-compose down
+
+# Просмотр логов
+docker-compose logs -f [service_name]  # service_name: postgres, backend, frontend
+
+# Пересборка контейнеров после изменений
+docker-compose build
+docker-compose up -d
+
+# Остановка и удаление всех данных (включая БД)
+docker-compose down -v
+
+# Запуск в режиме разработки (только PostgreSQL + Backend)
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+### Backend (локально):
 
 ```bash
 cd backend
@@ -133,7 +206,7 @@ npm run dev
 npm start
 ```
 
-### Frontend:
+### Frontend (локально):
 
 ```bash
 cd frontend
@@ -157,6 +230,7 @@ npm run preview
 
 - [Backend README](./backend/README.md) - Документация по backend API
 - [Frontend README](./frontend/README.md) - Документация по frontend приложению
+- [Docker Guide](./DOCKER.md) - Подробное руководство по Docker
 
 ## 🔌 API
 
@@ -258,12 +332,31 @@ Backend предоставляет RESTful API на `http://localhost:3000`
 
 ## 🚀 Деплой
 
-### Backend:
+### С Docker:
+
+```bash
+# На продакшен сервере
+git clone <repository-url>
+cd cryptography-
+
+# Настройте переменные окружения в docker-compose.yml или через .env файлы
+# Запустите
+docker-compose up -d
+
+# Для обновления
+git pull
+docker-compose build
+docker-compose up -d
+```
+
+### Без Docker:
+
+#### Backend:
 - Настройте переменные окружения на сервере
 - Убедитесь, что PostgreSQL доступен
 - Запустите `npm start`
 
-### Frontend:
+#### Frontend:
 - Выполните `npm run build`
 - Разверните папку `dist/` на статическом хостинге
 - Обновите `API_BASE_URL` на адрес продакшен backend

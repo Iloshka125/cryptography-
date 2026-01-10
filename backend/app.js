@@ -89,12 +89,17 @@ app.use('/leaderboard', leaderboardRoutes);
 app.use('/level-settings', levelSettingsRoutes);
 app.use('/level-experience-requirements', levelExperienceRequirementsRoutes);
 
+// Health check endpoint для Docker
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // 404
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Маршрут не найден' });
 });
 
 // Запуск сервера
-app.listen(PORT, () => {
-  console.log(`🚀 Сервер запущен на http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Сервер запущен на http://0.0.0.0:${PORT}`);
 });
