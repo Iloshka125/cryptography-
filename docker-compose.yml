@@ -1,0 +1,73 @@
+services:
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:15-alpine
+    container_name: cryptography-postgres
+    environment:
+      POSTGRES_USER: cryptography_user
+      POSTGRES_PASSWORD: cryptography_password
+      POSTGRES_DB: cryptography_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cryptography_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cryptography-network
+
+  # Backend сервер
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cryptography-backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: cryptography_user
+      DB_PASSWORD: cryptography_password
+      DB_NAME: cryptography_db
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - cryptography-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend приложение
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cryptography-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - cryptography-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  cryptography-network:
+    driver: bridge
+

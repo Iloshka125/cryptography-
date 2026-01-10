@@ -1,0 +1,57 @@
+services:
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:15-alpine
+    container_name: cryptography-postgres-dev
+    environment:
+      POSTGRES_USER: cryptography_user
+      POSTGRES_PASSWORD: cryptography_password
+      POSTGRES_DB: cryptography_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cryptography_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cryptography-network-dev
+
+  # Backend сервер (в режиме разработки с nodemon)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: cryptography-backend-dev
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: cryptography_user
+      DB_PASSWORD: cryptography_password
+      DB_NAME: cryptography_db
+      PORT: 3000
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - cryptography-network-dev
+    command: npm run dev
+
+volumes:
+  postgres_data_dev:
+    driver: local
+
+networks:
+  cryptography-network-dev:
+    driver: bridge
+
