@@ -5,7 +5,41 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { Label } from '../components/ui/label.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Button } from '../components/ui/button.jsx';
-import { User, Mail, Phone, Lock, Award, CheckCircle2, ArrowLeft, renderIconByValue, Target, Crown, LockOpen, UserSecret, Code, Gamepad2, Zap, Star, Fire, Rocket, Gem, TheaterMasks, Palette, Magic, Ghost, Dragon, HatWizard, StarOfLife } from '../components/IconSet.jsx';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../components/ui/dialog.jsx';
+import {
+  User,
+  Mail,
+  Phone,
+  Lock,
+  Award,
+  CheckCircle2,
+  ArrowLeft,
+  renderIconByValue,
+  Target,
+  Crown,
+  LockOpen,
+  UserSecret,
+  Code,
+  Gamepad2,
+  Zap,
+  Star,
+  Fire,
+  Rocket,
+  Gem,
+  TheaterMasks,
+  Palette,
+  Magic,
+  Ghost,
+  Dragon,
+  HatWizard,
+  StarOfLife,
+} from '../components/IconSet.jsx';
 import { getProfile, updateProfile, changePassword } from '../api/profile.js';
 
 const avatars = [
@@ -57,6 +91,8 @@ const ProfilePage = () => {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+  const [pendingAvatar, setPendingAvatar] = useState('target');
 
   // Перенаправляем на приветственную страницу, если пользователь не авторизован
   useEffect(() => {
@@ -99,6 +135,7 @@ const ProfilePage = () => {
         setUserPhone(profile.phone || '');
         setUserAvatar(profile.avatar || 'target');
         setUserLevel(profile.level || 1);
+        setPendingAvatar(profile.avatar || 'target');
         
         // Обновляем данные в AuthContext после загрузки из БД
         authLogin({
@@ -136,6 +173,16 @@ const ProfilePage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openAvatarPicker = () => {
+    setPendingAvatar(userAvatar);
+    setIsAvatarDialogOpen(true);
+  };
+
+  const handleAvatarConfirm = () => {
+    setUserAvatar(pendingAvatar);
+    setIsAvatarDialogOpen(false);
   };
 
   const handleProfileUpdate = async (e) => {
@@ -262,9 +309,14 @@ const ProfilePage = () => {
         {/* Profile Header Card */}
         <div className="mb-8 p-8 border-2 border-cyan-400 rounded-lg bg-gradient-to-br from-[#0a0a0f]/90 to-[#0f0f1a]/90 shadow-[0_0_30px_rgba(0,255,255,0.3)] backdrop-blur-xl">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-            <div className="w-32 h-32 bg-gradient-to-br from-cyan-400 to-cyan-300 rounded-full border-4 border-cyan-400 shadow-[0_0_30px_rgba(0,255,255,0.6)] flex items-center justify-center">
+            <button
+              type="button"
+              onClick={openAvatarPicker}
+              className="w-32 h-32 bg-gradient-to-br from-cyan-400 to-cyan-300 rounded-full border-4 border-cyan-400 shadow-[0_0_30px_rgba(0,255,255,0.6)] flex items-center justify-center hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-[#0f0f1a]"
+              title="Изменить аватар"
+            >
               {renderIconByValue(userAvatar, 'w-16 h-16 text-black')}
-            </div>
+            </button>
             <div className="flex-1 text-center md:text-left">
               <h2 className="text-3xl text-cyan-300 mb-2 drop-shadow-[0_0_8px_rgba(0,255,255,0.8)]">
                 {username}
@@ -291,34 +343,6 @@ const ProfilePage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column */}
           <div className="space-y-6">
-            {/* Avatar Selection */}
-            <div className="p-6 border-2 border-cyan-400/30 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_20px_rgba(0,255,255,0.2)] backdrop-blur-sm">
-              <h3 className="text-xl text-cyan-300 mb-4 flex items-center gap-2 drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]">
-                <User className="w-5 h-5" />
-                Выбор аватара
-              </h3>
-              <div className="grid grid-cols-6 gap-3">
-                {avatars.map((avatar) => {
-                  const IconComponent = avatar.icon;
-                  return (
-                    <button
-                      key={avatar.value}
-                      type="button"
-                      onClick={() => setUserAvatar(avatar.value)}
-                      className={`w-14 h-14 rounded-lg border-2 transition-all hover:scale-110 flex items-center justify-center ${
-                        userAvatar === avatar.value
-                          ? 'border-cyan-400 bg-cyan-400/30 shadow-[0_0_20px_rgba(0,255,255,0.6)] scale-110'
-                          : 'border-cyan-200/30 hover:border-cyan-400 hover:bg-cyan-400/10'
-                      }`}
-                      title={avatar.name}
-                    >
-                      <IconComponent className="w-6 h-6 text-cyan-300" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Profile Information */}
             <div className="p-6 border-2 border-cyan-400/30 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_20px_rgba(0,255,255,0.2)] backdrop-blur-sm">
               <h3 className="text-xl text-cyan-300 mb-4 flex items-center gap-2 drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]">
@@ -471,6 +495,57 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Выбор аватара</DialogTitle>
+            <DialogDescription>
+              Нажмите на понравившийся значок и подтвердите выбор.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-6">
+            <div className="grid grid-cols-5 sm:grid-cols-6 gap-3">
+              {avatars.map((avatar) => {
+                const IconComponent = avatar.icon;
+                const isActive = pendingAvatar === avatar.value;
+                return (
+                  <button
+                    key={avatar.value}
+                    type="button"
+                    onClick={() => setPendingAvatar(avatar.value)}
+                    className={`w-14 h-14 rounded-lg border-2 transition-all hover:scale-110 flex items-center justify-center ${
+                      isActive
+                        ? 'border-cyan-400 bg-cyan-400/30 shadow-[0_0_20px_rgba(0,255,255,0.6)] scale-110'
+                        : 'border-cyan-200/30 hover:border-cyan-400 hover:bg-cyan-400/10'
+                    }`}
+                    title={avatar.name}
+                  >
+                    <IconComponent className="w-6 h-6 text-cyan-300" />
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                className="border border-cyan-400/40 text-cyan-200 hover:bg-cyan-400/10"
+                onClick={() => setIsAvatarDialogOpen(false)}
+              >
+                Отмена
+              </Button>
+              <Button
+                type="button"
+                className="bg-cyan-400 text-black hover:bg-cyan-300 shadow-[0_0_20px_rgba(0,255,255,0.5)]"
+                onClick={handleAvatarConfirm}
+              >
+                Выбрать
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

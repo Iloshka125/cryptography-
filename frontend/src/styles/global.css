@@ -267,7 +267,7 @@ body::after {
 }
 
 .auth-card {
-  width: 440px;
+  width: 520px;
   max-width: calc(100vw - 32px);
   padding: 32px;
   border-radius: calc(var(--radius) + 4px);
@@ -514,7 +514,7 @@ body::after {
 }
 
 .grid--2 {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 /* Quiz Styles */
