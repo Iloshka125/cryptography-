@@ -62,6 +62,7 @@ const AdminPage = () => {
     orderIndex: 1,
     isPaid: false,
     price: 0,
+    hint: '',
   });
   
   // Состояние для редактирования категории
@@ -255,6 +256,7 @@ const AdminPage = () => {
       orderIndex: level.order_index || 1,
       isPaid: level.is_paid || false,
       price: level.price || 0,
+      hint: level.hint || '',
     });
     setIsLevelModalOpen(true);
   };
@@ -280,6 +282,7 @@ const AdminPage = () => {
           orderIndex: parseInt(levelForm.orderIndex) || 1,
           isPaid: levelForm.isPaid,
           price: levelForm.isPaid ? parseInt(levelForm.price) || 0 : 0,
+          hint: levelForm.hint || '',
         };
         
         if (levelForm.useTaskFile && levelForm.taskFile) {
@@ -289,7 +292,7 @@ const AdminPage = () => {
         const response = await updateLevel(editingLevel.id, updateData);
         
         if (response.success) {
-          setLevelForm({ name: '', description: '', task: '', taskFile: null, useTaskFile: false, flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
+          setLevelForm({ name: '', description: '', task: '', taskFile: null, useTaskFile: false, flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0, hint: '' });
           setEditingLevel(null);
           setIsLevelModalOpen(false);
           showToast('Уровень обновлен!', 'success');
@@ -308,6 +311,7 @@ const AdminPage = () => {
           orderIndex: parseInt(levelForm.orderIndex) || 1,
           isPaid: levelForm.isPaid,
           price: levelForm.isPaid ? parseInt(levelForm.price) || 0 : 0,
+          hint: levelForm.hint || '',
         };
         
         if (levelForm.useTaskFile && levelForm.taskFile) {
@@ -317,7 +321,7 @@ const AdminPage = () => {
         const response = await createLevel(selectedCategory.id, createData);
         
         if (response.success) {
-          setLevelForm({ name: '', description: '', task: '', taskFile: null, useTaskFile: false, flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0 });
+          setLevelForm({ name: '', description: '', task: '', taskFile: null, useTaskFile: false, flag: '', categoryId: null, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0, hint: '' });
           setIsLevelModalOpen(false);
           showToast('Уровень создан!', 'success');
           await loadCategories();
@@ -638,7 +642,7 @@ const AdminPage = () => {
                   <Button
                     onClick={() => {
                       setEditingLevel(null);
-                      setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: selectedCategory.id, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1 });
+                      setLevelForm({ name: '', description: '', task: '', flag: '', categoryId: selectedCategory.id, difficulty: 'medium', points: 100, estimatedTime: '15 мин', orderIndex: 1, isPaid: false, price: 0, hint: '', taskFile: null, useTaskFile: false });
                       setIsLevelModalOpen(true);
                     }}
                     className="bg-cyan-400 text-black hover:bg-cyan-300"
@@ -911,6 +915,15 @@ const AdminPage = () => {
                     value={levelForm.flag}
                     onChange={(e) => setLevelForm({ ...levelForm, flag: e.target.value })}
                     required
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Подсказка (необязательно)</Label>
+                  <Textarea
+                    value={levelForm.hint}
+                    onChange={(e) => setLevelForm({ ...levelForm, hint: e.target.value })}
+                    placeholder="Краткая подсказка для уровня"
+                    rows={3}
                   />
                 </div>
                 <div>

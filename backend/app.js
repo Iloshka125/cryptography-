@@ -29,6 +29,7 @@ const addLevelPaymentFields = require('./migrations/addLevelPaymentFields');
 const addTaskFileFieldToLevels = require('./migrations/addTaskFileFieldToLevels');
 const createUserPurchasedLevelsTable = require('./migrations/createUserPurchasedLevelsTable');
 const normalizeEmptyPhoneAndEmail = require('./migrations/normalizeEmptyPhoneAndEmail');
+const addLevelHintField = require('./migrations/addLevelHintField');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -82,6 +83,7 @@ app.use((req, res, next) => {
     await addTaskFileFieldToLevels();
     await createUserPurchasedLevelsTable();
     await normalizeEmptyPhoneAndEmail();
+    await addLevelHintField();
   } catch (err) {
     console.error('Ошибка выполнения миграций:', err);
     process.exit(1);

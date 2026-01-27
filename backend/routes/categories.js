@@ -87,6 +87,7 @@ router.get('/levels/:id', async (req, res) => {
       estimatedTime: levelWithoutFlag.estimated_time,
       isPaid: levelWithoutFlag.is_paid || false,
       price: levelWithoutFlag.price || 0,
+      hint: levelWithoutFlag.hint || null,
       completed,
       purchased,
     };
@@ -274,7 +275,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:categoryId/levels', upload.single('taskFile'), async (req, res) => {
   try {
     const { categoryId } = req.params;
-    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price } = req.body;
+    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price, hint } = req.body;
     
     if (!name) {
       return res.status(400).json({ error: 'Требуется название уровня' });
@@ -312,6 +313,7 @@ router.post('/:categoryId/levels', upload.single('taskFile'), async (req, res) =
       estimatedTime: estimatedTime || '15 мин',
       isPaid: isPaid === 'true' || isPaid === true || false,
       price: (isPaid === 'true' || isPaid === true) ? (parseInt(price) || 0) : 0,
+      hint: hint || null,
     });
     
     res.status(201).json({
@@ -330,6 +332,7 @@ router.post('/:categoryId/levels', upload.single('taskFile'), async (req, res) =
         estimatedTime: level.estimated_time,
         isPaid: level.is_paid,
         price: level.price,
+        hint: level.hint,
       },
     });
   } catch (err) {
@@ -352,7 +355,7 @@ router.post('/:categoryId/levels', upload.single('taskFile'), async (req, res) =
 router.put('/levels/:id', upload.single('taskFile'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price } = req.body;
+    const { name, description, task, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price, hint } = req.body;
     
     // Обрабатываем загруженный файл
     let taskFilePath = undefined;
@@ -402,6 +405,7 @@ router.put('/levels/:id', upload.single('taskFile'), async (req, res) => {
     if (difficulty !== undefined) updateData.difficulty = difficulty;
     if (points !== undefined) updateData.points = points ? parseInt(points) : undefined;
     if (estimatedTime !== undefined) updateData.estimatedTime = estimatedTime;
+    if (hint !== undefined) updateData.hint = hint;
     
     if (isPaid !== undefined) {
       const isPaidBool = isPaid === 'true' || isPaid === true;
@@ -433,6 +437,7 @@ router.put('/levels/:id', upload.single('taskFile'), async (req, res) => {
         estimatedTime: level.estimated_time,
         isPaid: level.is_paid,
         price: level.price,
+        hint: level.hint,
       },
     });
   } catch (err) {

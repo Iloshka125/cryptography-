@@ -11,12 +11,13 @@ const LevelPage = () => {
   const { categoryId, levelId } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { userId } = useAuth();
+  const { userId, balance, subtractHints } = useAuth();
   const [flag, setFlag] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [level, setLevel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isHintRevealed, setIsHintRevealed] = useState(false);
 
   // Загружаем данные уровня из БД
   useEffect(() => {
@@ -118,6 +119,34 @@ const LevelPage = () => {
       console.error('Ошибка проверки флага:', error);
       showToast(error.message || 'Ошибка при проверке флага', 'error');
       setIsSubmitting(false);
+    }
+  };
+
+  const handleBuyHint = async () => {
+    if (!level?.hint) {
+      showToast('Для этого уровня пока нет подсказки.', 'info');
+      return;
+    }
+
+    if (isHintRevealed) {
+      return;
+    }
+
+    const currentHints = balance?.hints || 0;
+    const hintCost = 1; // стоимость одной подсказки в "молниях"
+
+    if (currentHints < hintCost) {
+      showToast('Недостаточно подсказок. Купите их в магазине.', 'error');
+      return;
+    }
+
+    try {
+      await subtractHints(hintCost);
+      setIsHintRevealed(true);
+      showToast('Подсказка открыта!', 'success');
+    } catch (error) {
+      console.error('Ошибка покупки подсказки:', error);
+      showToast(error.message || 'Ошибка при покупке подсказки', 'error');
     }
   };
 
@@ -340,18 +369,36 @@ const LevelPage = () => {
           )}
         </div>
 
-        {/* Hint Section */}
-        <div className="mt-6 p-6 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-400/5 border border-amber-400/30 backdrop-blur-sm">
-          <div className="flex items-start gap-3">
-            <Zap className="w-6 h-6 text-amber-300" />
-            <div>
-              <p className="text-amber-200 font-semibold mb-1">Совет</p>
-              <p className="text-amber-200/80 text-sm">
-                Внимательно изучите описание задания и используйте полученные знания для решения. Не торопитесь!
-              </p>
+        {/* Подсказка (покупаемая) */}
+        {level?.hint && (
+          <div className="mt-6 p-6 rounded-xl bg-gradient-to-r from-cyan-500/10 to-cyan-400/5 border border-cyan-400/40 backdrop-blur-sm">
+            <div className="flex items-start gap-3 mb-3">
+              <Zap className="w-6 h-6 text-cyan-300" />
+              <div className="flex-1">
+                <p className="text-cyan-200 font-semibold mb-1">Подсказка</p>
+                {!isHintRevealed ? (
+                  <>
+                    <p className="text-cyan-200/80 text-sm mb-3">
+                      Можете открыть подсказку за 1 молнию. Сейчас у вас {balance?.hints ?? 0} подсказок.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleBuyHint}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-400 text-black font-semibold hover:bg-cyan-300 transition-all shadow-[0_0_20px_rgba(0,255,255,0.5)]"
+                    >
+                      <Zap className="w-4 h-4" />
+                      Открыть подсказку (1)
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-cyan-50 text-sm whitespace-pre-wrap">
+                    {level.hint}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

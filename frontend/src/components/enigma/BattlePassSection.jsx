@@ -3,18 +3,31 @@ import { CheckCircle2, Lock, Crown, Gift } from '../IconSet.jsx';
 
 const BattlePassSection = ({ rewards, userLevel = 1, userExperience = 0, battlePassData, showToast, onClaimReward }) => {
   const totalLevels = battlePassData?.maxLevel || (rewards.length > 0 ? Math.max(...rewards.map(r => r.level)) : 10);
-  
-  // Рассчитываем прогресс к следующему уровню на основе реальных данных опыта
+
+  // Рассчитываем прогресс внутри ТЕКУЩЕГО уровня
   const currentLevelReq = battlePassData?.currentLevelExperience || 0;
   const nextLevelReq = battlePassData?.nextLevelExperience || 0;
   const experienceForNextLevel = battlePassData?.experienceForNextLevel || 0;
-  const currentProgress = userExperience - currentLevelReq;
-  const progressToNextLevel = experienceForNextLevel > 0 
-    ? (currentProgress / experienceForNextLevel) * 100 
+
+  // Сколько XP набрано С МОМЕНТА достижения текущего уровня
+  const rawGained = userExperience - currentLevelReq;
+  const gainedWithinLevel = Math.max(
+    0,
+    experienceForNextLevel > 0
+      ? Math.min(rawGained, experienceForNextLevel)
+      : 0
+  );
+
+  // Сколько XP осталось до следующего уровня
+  const remainingXP = experienceForNextLevel > 0
+    ? Math.max(0, experienceForNextLevel - gainedWithinLevel)
     : 0;
-  
+
+  const progressToNextLevel = experienceForNextLevel > 0 
+    ? (gainedWithinLevel / experienceForNextLevel) * 100 
+    : 0;
+
   const progress = Math.min(progressToNextLevel, 100);
-  const remainingXP = Math.max(0, nextLevelReq - userExperience);
 
   return (
     <div className="space-y-6">
@@ -32,10 +45,10 @@ const BattlePassSection = ({ rewards, userLevel = 1, userExperience = 0, battleP
             />
           </div>
           <div className="text-center text-cyan-200 text-sm">
-            {remainingXP > 0 ? (
+            {experienceForNextLevel > 0 ? (
               <>
-                {userExperience} / {nextLevelReq} XP
-                {remainingXP > 0 && ` (осталось ${remainingXP} XP до уровня ${userLevel + 1})`}
+                {/* Показываем прогресс внутри текущего уровня: 0 / нужное_кол-во_XP */}
+                {gainedWithinLevel} / {experienceForNextLevel} XP (до уровня {userLevel + 1}, осталось {remainingXP} XP)
               </>
             ) : (
               <>Достигнут максимальный уровень!</>
