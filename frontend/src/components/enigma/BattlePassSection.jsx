@@ -3,7 +3,7 @@ import { CheckCircle2, Lock, Crown, Gift } from '../IconSet.jsx';
 
 const BattlePassSection = ({ rewards, userLevel = 1, userExperience = 0, battlePassData, showToast, onClaimReward }) => {
   const totalLevels = battlePassData?.maxLevel || (rewards.length > 0 ? Math.max(...rewards.map(r => r.level)) : 10);
-
+  
   // Рассчитываем прогресс внутри ТЕКУЩЕГО уровня
   const currentLevelReq = battlePassData?.currentLevelExperience || 0;
   const nextLevelReq = battlePassData?.nextLevelExperience || 0;
@@ -26,7 +26,7 @@ const BattlePassSection = ({ rewards, userLevel = 1, userExperience = 0, battleP
   const progressToNextLevel = experienceForNextLevel > 0 
     ? (gainedWithinLevel / experienceForNextLevel) * 100 
     : 0;
-
+  
   const progress = Math.min(progressToNextLevel, 100);
 
   return (
