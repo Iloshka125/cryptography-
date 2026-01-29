@@ -8,6 +8,7 @@ const UserLevelProgress = require('../models/UserLevelProgress');
 const UserPurchasedLevels = require('../models/UserPurchasedLevels');
 const User = require('../models/User');
 const Balance = require('../models/Balance');
+const Competition = require('../models/Competition');
 const upload = require('../config/upload');
 const router = express.Router();
 
@@ -151,6 +152,21 @@ router.post('/levels/:id/check', async (req, res) => {
       
       // Добавляем опыт пользователю и обновляем его уровень
       const updatedUser = await User.addExperience(userId, experienceGained);
+      
+      // Обновляем прогресс пользователя во всех активных соревнованиях
+      try {
+        const competitions = await Competition.findAll();
+        const activeCompetitions = competitions.filter(c => c.status === 'active');
+        for (const comp of activeCompetitions) {
+          const isParticipating = await Competition.isUserParticipating(userId, comp.id);
+          if (isParticipating) {
+            await Competition.updateUserProgress(userId, comp.id, updatedUser.experience, updatedUser.level);
+          }
+        }
+      } catch (compErr) {
+        console.error('Ошибка обновления прогресса в соревнованиях:', compErr);
+        // Не прерываем выполнение, если ошибка в соревнованиях
+      }
       
       res.json({
         success: true,

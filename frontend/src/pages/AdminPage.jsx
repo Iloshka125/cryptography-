@@ -27,6 +27,12 @@ import {
   setLevelExperienceRequirement,
   deleteLevelExperienceRequirement,
 } from '../api/levelExperienceRequirements.js';
+import {
+  getCompetitions,
+  createCompetition,
+  updateCompetition,
+  deleteCompetition,
+} from '../api/competitions.js';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -84,6 +90,27 @@ const AdminPage = () => {
   const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
   const [loadingRequirements, setLoadingRequirements] = useState(false);
 
+  // Состояние для соревнований
+  const [competitions, setCompetitions] = useState([]);
+  const [isCompetitionModalOpen, setIsCompetitionModalOpen] = useState(false);
+  const [editingCompetition, setEditingCompetition] = useState(null);
+  const [competitionForm, setCompetitionForm] = useState({
+    name: '',
+    description: '',
+    welcomeText: '',
+    entryFee: 0,
+    startDate: '',
+    endDate: '',
+    status: 'upcoming',
+    initialConditions: {
+      resetExperience: false,
+      startingExperience: 0,
+      startingLevel: 1,
+    },
+    prize: '',
+    maxParticipants: '',
+  });
+
   // Если пользователь не админ, редирект (это также обрабатывается в AdminRoute, но на всякий случай)
   if (!isAdmin) {
     return null;
@@ -94,6 +121,7 @@ const AdminPage = () => {
     loadCategories();
     loadBattlePassRewards();
     loadLevelExperienceRequirements();
+    loadCompetitions();
   }, []);
 
   const loadLevelExperienceRequirements = async () => {
@@ -416,6 +444,133 @@ const AdminPage = () => {
     }
   };
 
+  const loadCompetitions = async () => {
+    try {
+      const response = await getCompetitions();
+      if (response.success && response.competitions) {
+        setCompetitions(response.competitions);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки соревнований:', error);
+      showToast('Ошибка загрузки соревнований', 'error');
+    }
+  };
+
+  const handleCompetitionEdit = (competition) => {
+    setEditingCompetition(competition);
+    setCompetitionForm({
+      name: competition.name || '',
+      description: competition.description || '',
+      welcomeText: competition.welcome_text || '',
+      entryFee: competition.entry_fee || 0,
+      startDate: competition.start_date ? competition.start_date.split('T')[0] : '',
+      endDate: competition.end_date ? competition.end_date.split('T')[0] : '',
+      status: competition.status || 'upcoming',
+      initialConditions: competition.initial_conditions || {
+        resetExperience: false,
+        startingExperience: 0,
+        startingLevel: 1,
+      },
+      prize: competition.prize || '',
+      maxParticipants: competition.max_participants || '',
+    });
+    setIsCompetitionModalOpen(true);
+  };
+
+  const handleCompetitionSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingCompetition) {
+        const response = await updateCompetition(editingCompetition.id, {
+          name: competitionForm.name,
+          description: competitionForm.description,
+          welcomeText: competitionForm.welcomeText,
+          entryFee: parseInt(competitionForm.entryFee) || 0,
+          startDate: competitionForm.startDate || null,
+          endDate: competitionForm.endDate,
+          status: competitionForm.status,
+          initialConditions: competitionForm.initialConditions,
+          prize: competitionForm.prize || null,
+          maxParticipants: competitionForm.maxParticipants ? parseInt(competitionForm.maxParticipants) : null,
+        });
+        if (response.success) {
+          showToast('Соревнование обновлено!', 'success');
+          setIsCompetitionModalOpen(false);
+          setEditingCompetition(null);
+          setCompetitionForm({
+            name: '',
+            description: '',
+            welcomeText: '',
+            entryFee: 0,
+            startDate: '',
+            endDate: '',
+            status: 'upcoming',
+            initialConditions: {
+              resetExperience: false,
+              startingExperience: 0,
+              startingLevel: 1,
+            },
+            prize: '',
+            maxParticipants: '',
+          });
+          await loadCompetitions();
+        }
+      } else {
+        const response = await createCompetition({
+          name: competitionForm.name,
+          description: competitionForm.description,
+          welcomeText: competitionForm.welcomeText,
+          entryFee: parseInt(competitionForm.entryFee) || 0,
+          startDate: competitionForm.startDate || null,
+          endDate: competitionForm.endDate,
+          status: competitionForm.status,
+          initialConditions: competitionForm.initialConditions,
+          prize: competitionForm.prize || null,
+          maxParticipants: competitionForm.maxParticipants ? parseInt(competitionForm.maxParticipants) : null,
+        });
+        if (response.success) {
+          showToast('Соревнование создано!', 'success');
+          setIsCompetitionModalOpen(false);
+          setCompetitionForm({
+            name: '',
+            description: '',
+            welcomeText: '',
+            entryFee: 0,
+            startDate: '',
+            endDate: '',
+            status: 'upcoming',
+            initialConditions: {
+              resetExperience: false,
+              startingExperience: 0,
+              startingLevel: 1,
+            },
+            prize: '',
+            maxParticipants: '',
+          });
+          await loadCompetitions();
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения соревнования:', error);
+      showToast(error.message || 'Ошибка сохранения соревнования', 'error');
+    }
+  };
+
+  const handleDeleteCompetition = async (competitionId) => {
+    if (window.confirm('Вы уверены, что хотите удалить это соревнование?')) {
+      try {
+        const response = await deleteCompetition(competitionId);
+        if (response.success) {
+          showToast('Соревнование удалено', 'success');
+          await loadCompetitions();
+        }
+      } catch (error) {
+        console.error('Ошибка удаления соревнования:', error);
+        showToast(error.message || 'Ошибка удаления соревнования', 'error');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen page-fade-in">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -493,6 +648,85 @@ const AdminPage = () => {
                 )}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Секция Соревнований */}
+        <div className="mb-8">
+          <div className="p-6 border-2 border-cyan-400/30 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_20px_rgba(0,255,255,0.2)] backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl text-cyan-300">Соревнования</h2>
+              <Button
+                onClick={() => {
+                  setEditingCompetition(null);
+                  setCompetitionForm({
+                    name: '',
+                    description: '',
+                    welcomeText: '',
+                    entryFee: 0,
+                    startDate: '',
+                    endDate: '',
+                    status: 'upcoming',
+                    initialConditions: {
+                      resetExperience: false,
+                      startingExperience: 0,
+                      startingLevel: 1,
+                    },
+                    prize: '',
+                    maxParticipants: '',
+                  });
+                  setIsCompetitionModalOpen(true);
+                }}
+                className="bg-cyan-400 text-black hover:bg-cyan-300"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Создать соревнование
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {competitions.map((competition) => (
+                <div
+                  key={competition.id}
+                  className="p-4 border-2 border-cyan-400/30 rounded-lg"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-cyan-200 font-semibold">{competition.name}</h3>
+                    <span className={`px-2 py-1 text-xs rounded ${
+                      competition.status === 'active' ? 'bg-green-500/20 text-green-300' :
+                      competition.status === 'finished' ? 'bg-gray-500/20 text-gray-300' :
+                      'bg-yellow-500/20 text-yellow-300'
+                    }`}>
+                      {competition.status === 'active' ? 'Активно' :
+                       competition.status === 'finished' ? 'Завершено' : 'Скоро'}
+                    </span>
+                  </div>
+                  <p className="text-cyan-200/70 text-sm mb-2">{competition.description || 'Без описания'}</p>
+                  <div className="space-y-1 mb-3 text-xs text-cyan-200/60">
+                    <div>Участников: {competition.participants_count || 0}{competition.max_participants ? ` / ${competition.max_participants}` : ''}</div>
+                    <div>Взнос: {competition.entry_fee || 0} монет</div>
+                    {competition.prize && <div>Приз: {competition.prize}</div>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleCompetitionEdit(competition)}
+                      className="bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/50 flex-1"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteCompetition(competition.id)}
+                      className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {competitions.length === 0 && (
+                <p className="text-cyan-200/50 text-center py-8 col-span-full">Нет соревнований</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1061,6 +1295,189 @@ const AdminPage = () => {
                 </div>
                 <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
                   {editingRequirement ? 'Обновить' : 'Создать'}
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Модальное окно создания/редактирования соревнования */}
+        {isCompetitionModalOpen && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl text-cyan-300">
+                  {editingCompetition ? 'Редактировать соревнование' : 'Создать соревнование'}
+                </h3>
+                <Button
+                  onClick={() => {
+                    setIsCompetitionModalOpen(false);
+                    setEditingCompetition(null);
+                    setCompetitionForm({
+                      name: '',
+                      description: '',
+                      welcomeText: '',
+                      entryFee: 0,
+                      startDate: '',
+                      endDate: '',
+                      status: 'upcoming',
+                      initialConditions: {
+                        resetExperience: false,
+                        startingExperience: 0,
+                        startingLevel: 1,
+                      },
+                      prize: '',
+                      maxParticipants: '',
+                    });
+                  }}
+                  className="bg-transparent hover:bg-red-500/20 text-red-400"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <form onSubmit={handleCompetitionSubmit} className="space-y-4">
+                <div>
+                  <Label className="text-cyan-200">Название</Label>
+                  <Input
+                    value={competitionForm.name}
+                    onChange={(e) => setCompetitionForm({ ...competitionForm, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Описание</Label>
+                  <Textarea
+                    value={competitionForm.description}
+                    onChange={(e) => setCompetitionForm({ ...competitionForm, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Приветственный текст</Label>
+                  <Textarea
+                    value={competitionForm.welcomeText}
+                    onChange={(e) => setCompetitionForm({ ...competitionForm, welcomeText: e.target.value })}
+                    placeholder="Текст, который увидят участники при входе в соревнование"
+                    rows={4}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-cyan-200">Взнос за вход (монеты)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={competitionForm.entryFee}
+                      onChange={(e) => setCompetitionForm({ ...competitionForm, entryFee: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-cyan-200">Максимум участников</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={competitionForm.maxParticipants}
+                      onChange={(e) => setCompetitionForm({ ...competitionForm, maxParticipants: e.target.value })}
+                      placeholder="Не ограничено"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-cyan-200">Дата начала</Label>
+                    <Input
+                      type="datetime-local"
+                      value={competitionForm.startDate}
+                      onChange={(e) => setCompetitionForm({ ...competitionForm, startDate: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-cyan-200">Дата окончания *</Label>
+                    <Input
+                      type="datetime-local"
+                      value={competitionForm.endDate}
+                      onChange={(e) => setCompetitionForm({ ...competitionForm, endDate: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Статус</Label>
+                  <select
+                    value={competitionForm.status}
+                    onChange={(e) => setCompetitionForm({ ...competitionForm, status: e.target.value })}
+                    className="w-full border border-cyan-400/60 bg-[#0a0a0f] text-cyan-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400/70"
+                  >
+                    <option value="upcoming">Скоро</option>
+                    <option value="active">Активно</option>
+                    <option value="finished">Завершено</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Приз</Label>
+                  <Input
+                    value={competitionForm.prize}
+                    onChange={(e) => setCompetitionForm({ ...competitionForm, prize: e.target.value })}
+                    placeholder="5000 монет"
+                  />
+                </div>
+                <div className="p-4 border border-cyan-400/30 rounded-lg bg-[#0a0a0f]/50">
+                  <Label className="text-cyan-200 mb-3 block">Начальные условия</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="resetExperience"
+                        checked={competitionForm.initialConditions.resetExperience}
+                        onChange={(e) => setCompetitionForm({
+                          ...competitionForm,
+                          initialConditions: {
+                            ...competitionForm.initialConditions,
+                            resetExperience: e.target.checked,
+                          },
+                        })}
+                        className="w-5 h-5 rounded border-2 border-cyan-400/60 bg-[#0a0a0f] text-cyan-400 focus:ring-2 focus:ring-cyan-400/70 cursor-pointer"
+                      />
+                      <Label htmlFor="resetExperience" className="text-cyan-200 cursor-pointer select-none">
+                        Сбросить опыт участников до 0
+                      </Label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-cyan-200 text-sm">Начальный опыт</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={competitionForm.initialConditions.startingExperience}
+                          onChange={(e) => setCompetitionForm({
+                            ...competitionForm,
+                            initialConditions: {
+                              ...competitionForm.initialConditions,
+                              startingExperience: parseInt(e.target.value) || 0,
+                            },
+                          })}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-cyan-200 text-sm">Начальный уровень</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={competitionForm.initialConditions.startingLevel}
+                          onChange={(e) => setCompetitionForm({
+                            ...competitionForm,
+                            initialConditions: {
+                              ...competitionForm.initialConditions,
+                              startingLevel: parseInt(e.target.value) || 1,
+                            },
+                          })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
+                  {editingCompetition ? 'Сохранить изменения' : 'Создать'}
                 </Button>
               </form>
             </div>

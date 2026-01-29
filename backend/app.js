@@ -8,6 +8,7 @@ const battlepassRoutes = require('./routes/battlepass');
 const leaderboardRoutes = require('./routes/leaderboard');
 const levelSettingsRoutes = require('./routes/levelSettings');
 const levelExperienceRequirementsRoutes = require('./routes/levelExperienceRequirements');
+const competitionsRoutes = require('./routes/competitions');
 const createUsersTable = require('./migrations/createUsersTable');
 const createUserBalanceTable = require('./migrations/createUserBalanceTable');
 const addProfileFields = require('./migrations/addProfileFields');
@@ -30,6 +31,7 @@ const addTaskFileFieldToLevels = require('./migrations/addTaskFileFieldToLevels'
 const createUserPurchasedLevelsTable = require('./migrations/createUserPurchasedLevelsTable');
 const normalizeEmptyPhoneAndEmail = require('./migrations/normalizeEmptyPhoneAndEmail');
 const addLevelHintField = require('./migrations/addLevelHintField');
+const createCompetitionsTable = require('./migrations/createCompetitionsTable');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -84,6 +86,7 @@ app.use((req, res, next) => {
     await createUserPurchasedLevelsTable();
     await normalizeEmptyPhoneAndEmail();
     await addLevelHintField();
+    await createCompetitionsTable();
   } catch (err) {
     console.error('Ошибка выполнения миграций:', err);
     process.exit(1);
@@ -99,6 +102,7 @@ app.use('/battlepass', battlepassRoutes);
 app.use('/leaderboard', leaderboardRoutes);
 app.use('/level-settings', levelSettingsRoutes);
 app.use('/level-experience-requirements', levelExperienceRequirementsRoutes);
+app.use('/competitions', competitionsRoutes);
 
 // Health check endpoint для Docker
 app.get('/health', (req, res) => {

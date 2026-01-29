@@ -180,9 +180,48 @@ const ProfilePage = () => {
     setIsAvatarDialogOpen(true);
   };
 
-  const handleAvatarConfirm = () => {
-    setUserAvatar(pendingAvatar);
-    setIsAvatarDialogOpen(false);
+  const handleAvatarConfirm = async () => {
+    if (!userId && !authUserEmail && !authUserPhone) {
+      showToast('Ошибка: пользователь не авторизован', 'error');
+      return;
+    }
+
+    try {
+      setUpdatingProfile(true);
+
+      const updateData = {
+        avatar: pendingAvatar,
+      };
+
+      const params = userId 
+        ? { user_id: userId, ...updateData }
+        : (authUserEmail 
+          ? { email: authUserEmail, ...updateData }
+          : { phone: authUserPhone, ...updateData });
+
+      const response = await updateProfile(params);
+
+      if (response.success && response.profile) {
+        setUserAvatar(response.profile.avatar || pendingAvatar);
+
+        authLogin({
+          user_id: userId || response.profile.id,
+          email: response.profile.email,
+          phone: response.profile.phone,
+          username: response.profile.nickname,
+          isAdmin: response.profile.isAdmin || isAdmin,
+          balance: response.profile.balance || balance,
+        });
+
+        showToast('Аватар обновлён!', 'success');
+        setIsAvatarDialogOpen(false);
+      }
+    } catch (error) {
+      console.error('Ошибка обновления аватара:', error);
+      showToast(error.message || 'Ошибка обновления аватара', 'error');
+    } finally {
+      setUpdatingProfile(false);
+    }
   };
 
   const handleProfileUpdate = async (e) => {
@@ -497,15 +536,16 @@ const ProfilePage = () => {
       </div>
 
       <Dialog open={isAvatarDialogOpen} onOpenChange={setIsAvatarDialogOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Выбор аватара</DialogTitle>
-            <DialogDescription>
-              Нажмите на понравившийся значок и подтвердите выбор.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="p-6">
-            <div className="grid grid-cols-5 sm:grid-cols-6 gap-3">
+        <DialogContent className="fixed inset-0 flex items-center justify-center">
+          <div className="max-w-3xl w-[calc(100%-2rem)] mx-auto bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg shadow-[0_0_30px_rgba(0,255,255,0.3)]">
+            <DialogHeader>
+              <DialogTitle>Выбор аватара</DialogTitle>
+              <DialogDescription>
+                Нажмите на понравившийся значок и подтвердите выбор.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="p-6">
+              <div className="grid grid-cols-5 sm:grid-cols-6 gap-3">
               {avatars.map((avatar) => {
                 const IconComponent = avatar.icon;
                 const isActive = pendingAvatar === avatar.value;
@@ -542,6 +582,7 @@ const ProfilePage = () => {
               >
                 Выбрать
               </Button>
+            </div>
             </div>
           </div>
         </DialogContent>

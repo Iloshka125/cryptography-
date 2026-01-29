@@ -4,7 +4,7 @@ export const Dialog = ({ open, onOpenChange, children }) => {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 "
       onClick={() => onOpenChange?.(false)}
     >
       {children}
@@ -21,7 +21,7 @@ Dialog.propTypes = {
 export const DialogContent = ({ className = '', onClick, children }) => (
   <div
     className={[
-      'bg-[#0f0f1a] text-cyan-100 border border-cyan-500/40 rounded-xl shadow-2xl max-h-[90vh] overflow-auto custom-scrollbar w-full max-w-5xl',
+      'text-cyan-100 rounded-xl shadow-2xl max-h-[90vh] overflow-auto custom-scrollbar w-full max-w-5xl mx-auto',
       className,
     ]
       .filter(Boolean)

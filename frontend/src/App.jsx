@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage.jsx';
 import EnigmaPage from './pages/EnigmaPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import LevelPage from './pages/LevelPage.jsx';
+import CompetitionPage from './pages/CompetitionPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 
@@ -117,6 +118,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requireAuth={true}>
             <LevelPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/competition/:competitionId" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <CompetitionPage />
           </ProtectedRoute>
         } 
       />
