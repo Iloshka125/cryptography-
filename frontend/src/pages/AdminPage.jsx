@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button.jsx';
 import { Input } from '../components/ui/input.jsx';
 import { Label } from '../components/ui/label.jsx';
 import Textarea from '../components/ui/textarea.jsx';
-import { ArrowLeft, Plus, X, Trash2, Edit2, cryptographyIcons, renderIconByValue } from '../components/IconSet.jsx';
+import { ArrowLeft, Plus, X, Trash2, Edit2, Target, cryptographyIcons, renderIconByValue } from '../components/IconSet.jsx';
 import { 
   getCategories, 
   createCategory, 
@@ -33,6 +33,12 @@ import {
   updateCompetition,
   deleteCompetition,
 } from '../api/competitions.js';
+import {
+  getCompetitionLevels,
+  createCompetitionLevel,
+  updateCompetitionLevel,
+  deleteCompetitionLevel,
+} from '../api/competitionLevels.js';
 
 const AdminPage = () => {
   const navigate = useNavigate();
@@ -97,18 +103,31 @@ const AdminPage = () => {
   const [competitionForm, setCompetitionForm] = useState({
     name: '',
     description: '',
+    welcomeTitle: 'Приветствие',
     welcomeText: '',
     entryFee: 0,
     startDate: '',
     endDate: '',
     status: 'upcoming',
-    initialConditions: {
-      resetExperience: false,
-      startingExperience: 0,
-      startingLevel: 1,
-    },
     prize: '',
     maxParticipants: '',
+  });
+  
+  // Состояние для уровней соревнований
+  const [competitionLevels, setCompetitionLevels] = useState([]);
+  const [isCompetitionLevelModalOpen, setIsCompetitionLevelModalOpen] = useState(false);
+  const [editingCompetitionLevel, setEditingCompetitionLevel] = useState(null);
+  const [selectedCompetitionForLevels, setSelectedCompetitionForLevels] = useState(null);
+  const [competitionLevelForm, setCompetitionLevelForm] = useState({
+    name: '',
+    description: '',
+    task: '',
+    taskFile: null,
+    useTaskFile: false,
+    flag: '',
+    orderIndex: 0,
+    points: 100,
+    hint: '',
   });
 
   // Если пользователь не админ, редирект (это также обрабатывается в AdminRoute, но на всякий случай)
@@ -461,16 +480,12 @@ const AdminPage = () => {
     setCompetitionForm({
       name: competition.name || '',
       description: competition.description || '',
+      welcomeTitle: competition.welcome_title || 'Приветствие',
       welcomeText: competition.welcome_text || '',
       entryFee: competition.entry_fee || 0,
       startDate: competition.start_date ? competition.start_date.split('T')[0] : '',
       endDate: competition.end_date ? competition.end_date.split('T')[0] : '',
       status: competition.status || 'upcoming',
-      initialConditions: competition.initial_conditions || {
-        resetExperience: false,
-        startingExperience: 0,
-        startingLevel: 1,
-      },
       prize: competition.prize || '',
       maxParticipants: competition.max_participants || '',
     });
@@ -481,15 +496,14 @@ const AdminPage = () => {
     e.preventDefault();
     try {
       if (editingCompetition) {
-        const response = await updateCompetition(editingCompetition.id, {
+        const response = await updateCompetition(editingCompetition.hash || editingCompetition.id, {
           name: competitionForm.name,
           description: competitionForm.description,
+          welcomeTitle: competitionForm.welcomeTitle,
           welcomeText: competitionForm.welcomeText,
           entryFee: parseInt(competitionForm.entryFee) || 0,
           startDate: competitionForm.startDate || null,
           endDate: competitionForm.endDate,
-          status: competitionForm.status,
-          initialConditions: competitionForm.initialConditions,
           prize: competitionForm.prize || null,
           maxParticipants: competitionForm.maxParticipants ? parseInt(competitionForm.maxParticipants) : null,
         });
@@ -500,16 +514,12 @@ const AdminPage = () => {
           setCompetitionForm({
             name: '',
             description: '',
+            welcomeTitle: 'Приветствие',
             welcomeText: '',
             entryFee: 0,
             startDate: '',
             endDate: '',
             status: 'upcoming',
-            initialConditions: {
-              resetExperience: false,
-              startingExperience: 0,
-              startingLevel: 1,
-            },
             prize: '',
             maxParticipants: '',
           });
@@ -519,12 +529,11 @@ const AdminPage = () => {
         const response = await createCompetition({
           name: competitionForm.name,
           description: competitionForm.description,
+          welcomeTitle: competitionForm.welcomeTitle,
           welcomeText: competitionForm.welcomeText,
           entryFee: parseInt(competitionForm.entryFee) || 0,
           startDate: competitionForm.startDate || null,
           endDate: competitionForm.endDate,
-          status: competitionForm.status,
-          initialConditions: competitionForm.initialConditions,
           prize: competitionForm.prize || null,
           maxParticipants: competitionForm.maxParticipants ? parseInt(competitionForm.maxParticipants) : null,
         });
@@ -534,16 +543,12 @@ const AdminPage = () => {
           setCompetitionForm({
             name: '',
             description: '',
+            welcomeTitle: 'Приветствие',
             welcomeText: '',
             entryFee: 0,
             startDate: '',
             endDate: '',
             status: 'upcoming',
-            initialConditions: {
-              resetExperience: false,
-              startingExperience: 0,
-              startingLevel: 1,
-            },
             prize: '',
             maxParticipants: '',
           });
@@ -556,10 +561,10 @@ const AdminPage = () => {
     }
   };
 
-  const handleDeleteCompetition = async (competitionId) => {
+  const handleDeleteCompetition = async (competition) => {
     if (window.confirm('Вы уверены, что хотите удалить это соревнование?')) {
       try {
-        const response = await deleteCompetition(competitionId);
+        const response = await deleteCompetition(competition.hash || competition.id);
         if (response.success) {
           showToast('Соревнование удалено', 'success');
           await loadCompetitions();
@@ -569,6 +574,117 @@ const AdminPage = () => {
         showToast(error.message || 'Ошибка удаления соревнования', 'error');
       }
     }
+  };
+
+  // Функции для уровней соревнований
+  const loadCompetitionLevels = async (competitionId) => {
+    try {
+      const response = await getCompetitionLevels(competitionId);
+      if (response.success && response.levels) {
+        setCompetitionLevels(response.levels);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки уровней соревнования:', error);
+      showToast('Ошибка загрузки уровней соревнования', 'error');
+    }
+  };
+
+  const handleCompetitionLevelEdit = (level) => {
+    setEditingCompetitionLevel(level);
+    setCompetitionLevelForm({
+      name: level.name || '',
+      description: level.description || '',
+      task: level.task || '',
+      taskFile: null,
+      useTaskFile: !!level.task_file_path,
+      flag: level.flag || '',
+      orderIndex: level.order_index || 0,
+      points: level.points || 100,
+      hint: level.hint || '',
+    });
+    setIsCompetitionLevelModalOpen(true);
+  };
+
+  const handleCompetitionLevelSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData();
+      formData.append('competitionId', selectedCompetitionForLevels.id);
+      formData.append('name', competitionLevelForm.name);
+      formData.append('description', competitionLevelForm.description || '');
+      formData.append('flag', competitionLevelForm.flag);
+      formData.append('orderIndex', competitionLevelForm.orderIndex);
+      formData.append('points', competitionLevelForm.points);
+      formData.append('hint', competitionLevelForm.hint || '');
+      
+      if (competitionLevelForm.useTaskFile && competitionLevelForm.taskFile) {
+        formData.append('taskFile', competitionLevelForm.taskFile);
+      } else {
+        formData.append('task', competitionLevelForm.task || '');
+      }
+
+      if (editingCompetitionLevel) {
+        const response = await updateCompetitionLevel(editingCompetitionLevel.hash || editingCompetitionLevel.id, formData);
+        if (response.success) {
+          showToast('Уровень обновлен!', 'success');
+          setIsCompetitionLevelModalOpen(false);
+          setEditingCompetitionLevel(null);
+          setCompetitionLevelForm({
+            name: '',
+            description: '',
+            task: '',
+            taskFile: null,
+            useTaskFile: false,
+            flag: '',
+            orderIndex: 0,
+            points: 100,
+            hint: '',
+          });
+          await loadCompetitionLevels(selectedCompetitionForLevels.id);
+        }
+      } else {
+        const response = await createCompetitionLevel(formData);
+        if (response.success) {
+          showToast('Уровень создан!', 'success');
+          setIsCompetitionLevelModalOpen(false);
+          setCompetitionLevelForm({
+            name: '',
+            description: '',
+            task: '',
+            taskFile: null,
+            useTaskFile: false,
+            flag: '',
+            orderIndex: 0,
+            points: 100,
+            hint: '',
+          });
+          await loadCompetitionLevels(selectedCompetitionForLevels.id);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения уровня соревнования:', error);
+      showToast(error.message || 'Ошибка сохранения уровня соревнования', 'error');
+    }
+  };
+
+  const handleDeleteCompetitionLevel = async (level) => {
+    if (window.confirm('Вы уверены, что хотите удалить этот уровень?')) {
+      try {
+        const response = await deleteCompetitionLevel(level.hash || level.id);
+        if (response.success) {
+          showToast('Уровень удален', 'success');
+          await loadCompetitionLevels(selectedCompetitionForLevels.id);
+        }
+      } catch (error) {
+        console.error('Ошибка удаления уровня соревнования:', error);
+        showToast(error.message || 'Ошибка удаления уровня соревнования', 'error');
+      }
+    }
+  };
+
+  const handleManageCompetitionLevels = (competition) => {
+    setSelectedCompetitionForLevels(competition);
+    loadCompetitionLevels(competition.id);
   };
 
   return (
@@ -666,13 +782,8 @@ const AdminPage = () => {
                     entryFee: 0,
                     startDate: '',
                     endDate: '',
-                    status: 'upcoming',
-                    initialConditions: {
-                      resetExperience: false,
-                      startingExperience: 0,
-                      startingLevel: 1,
-                    },
-                    prize: '',
+            status: 'upcoming',
+            prize: '',
                     maxParticipants: '',
                   });
                   setIsCompetitionModalOpen(true);
@@ -715,7 +826,14 @@ const AdminPage = () => {
                       <Edit2 className="w-4 h-4" />
                     </Button>
                     <Button
-                      onClick={() => handleDeleteCompetition(competition.id)}
+                      onClick={() => handleManageCompetitionLevels(competition)}
+                      className="bg-purple-400/20 hover:bg-purple-400/30 text-purple-300 border border-purple-400/50"
+                      title="Управление уровнями"
+                    >
+                      <Target className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteCompetition(competition)}
                       className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1320,13 +1438,8 @@ const AdminPage = () => {
                       entryFee: 0,
                       startDate: '',
                       endDate: '',
-                      status: 'upcoming',
-                      initialConditions: {
-                        resetExperience: false,
-                        startingExperience: 0,
-                        startingLevel: 1,
-                      },
-                      prize: '',
+            status: 'upcoming',
+            prize: '',
                       maxParticipants: '',
                     });
                   }}
@@ -1350,6 +1463,14 @@ const AdminPage = () => {
                     value={competitionForm.description}
                     onChange={(e) => setCompetitionForm({ ...competitionForm, description: e.target.value })}
                     rows={3}
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Заголовок приветствия</Label>
+                  <Input
+                    value={competitionForm.welcomeTitle}
+                    onChange={(e) => setCompetitionForm({ ...competitionForm, welcomeTitle: e.target.value })}
+                    placeholder="Приветствие"
                   />
                 </div>
                 <div>
@@ -1403,15 +1524,11 @@ const AdminPage = () => {
                 </div>
                 <div>
                   <Label className="text-cyan-200">Статус</Label>
-                  <select
-                    value={competitionForm.status}
-                    onChange={(e) => setCompetitionForm({ ...competitionForm, status: e.target.value })}
-                    className="w-full border border-cyan-400/60 bg-[#0a0a0f] text-cyan-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400/70"
-                  >
-                    <option value="upcoming">Скоро</option>
-                    <option value="active">Активно</option>
-                    <option value="finished">Завершено</option>
-                  </select>
+                  <div className="w-full border border-cyan-400/60 bg-[#0a0a0f] text-cyan-100 rounded-md px-3 py-2">
+                    <span className="text-cyan-200/70 italic">
+                      Определяется автоматически на основе дат начала и окончания
+                    </span>
+                  </div>
                 </div>
                 <div>
                   <Label className="text-cyan-200">Приз</Label>
@@ -1420,61 +1537,6 @@ const AdminPage = () => {
                     onChange={(e) => setCompetitionForm({ ...competitionForm, prize: e.target.value })}
                     placeholder="5000 монет"
                   />
-                </div>
-                <div className="p-4 border border-cyan-400/30 rounded-lg bg-[#0a0a0f]/50">
-                  <Label className="text-cyan-200 mb-3 block">Начальные условия</Label>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        id="resetExperience"
-                        checked={competitionForm.initialConditions.resetExperience}
-                        onChange={(e) => setCompetitionForm({
-                          ...competitionForm,
-                          initialConditions: {
-                            ...competitionForm.initialConditions,
-                            resetExperience: e.target.checked,
-                          },
-                        })}
-                        className="w-5 h-5 rounded border-2 border-cyan-400/60 bg-[#0a0a0f] text-cyan-400 focus:ring-2 focus:ring-cyan-400/70 cursor-pointer"
-                      />
-                      <Label htmlFor="resetExperience" className="text-cyan-200 cursor-pointer select-none">
-                        Сбросить опыт участников до 0
-                      </Label>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-cyan-200 text-sm">Начальный опыт</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={competitionForm.initialConditions.startingExperience}
-                          onChange={(e) => setCompetitionForm({
-                            ...competitionForm,
-                            initialConditions: {
-                              ...competitionForm.initialConditions,
-                              startingExperience: parseInt(e.target.value) || 0,
-                            },
-                          })}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-cyan-200 text-sm">Начальный уровень</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={competitionForm.initialConditions.startingLevel}
-                          onChange={(e) => setCompetitionForm({
-                            ...competitionForm,
-                            initialConditions: {
-                              ...competitionForm.initialConditions,
-                              startingLevel: parseInt(e.target.value) || 1,
-                            },
-                          })}
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
                 <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
                   {editingCompetition ? 'Сохранить изменения' : 'Создать'}
@@ -1527,6 +1589,200 @@ const AdminPage = () => {
                   {editingBattlePassReward ? 'Сохранить изменения' : 'Создать'}
                 </Button>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Модальное окно управления уровнями соревнования */}
+        {selectedCompetitionForLevels && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl text-cyan-300">
+                  Уровни соревнования: {selectedCompetitionForLevels.name}
+                </h3>
+                <Button
+                  onClick={() => {
+                    setSelectedCompetitionForLevels(null);
+                    setCompetitionLevels([]);
+                    setIsCompetitionLevelModalOpen(false);
+                    setEditingCompetitionLevel(null);
+                  }}
+                  className="bg-transparent hover:bg-red-500/20 text-red-400"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="mb-4">
+                <Button
+                  onClick={() => {
+                    setEditingCompetitionLevel(null);
+                    setCompetitionLevelForm({
+                      name: '',
+                      description: '',
+                      task: '',
+                      taskFile: null,
+                      useTaskFile: false,
+                      flag: '',
+                      orderIndex: competitionLevels.length,
+                      points: 100,
+                      hint: '',
+                    });
+                    setIsCompetitionLevelModalOpen(true);
+                  }}
+                  className="bg-cyan-400 text-black hover:bg-cyan-300"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Добавить уровень
+                </Button>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                {competitionLevels.map((level) => (
+                  <div
+                    key={level.id}
+                    className="p-4 border border-cyan-400/30 rounded-lg bg-[#0a0a0f]/50 flex items-center justify-between"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <span className="text-cyan-200/70 text-sm">#{level.order_index}</span>
+                        <h4 className="text-cyan-200 font-semibold">{level.name}</h4>
+                        <span className="text-amber-300 text-sm">{level.points} очков</span>
+                      </div>
+                      {level.description && (
+                        <p className="text-cyan-200/70 text-sm mt-1">{level.description}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleCompetitionLevelEdit(level)}
+                        className="bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/50"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteCompetitionLevel(level)}
+                        className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {competitionLevels.length === 0 && (
+                  <p className="text-cyan-200/50 text-center py-8">Нет уровней</p>
+                )}
+              </div>
+
+              {/* Модальное окно создания/редактирования уровня соревнования */}
+              {isCompetitionLevelModalOpen && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-60">
+                  <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-2xl text-cyan-300">
+                        {editingCompetitionLevel ? 'Редактировать уровень' : 'Создать уровень'}
+                      </h3>
+                      <Button
+                        onClick={() => {
+                          setIsCompetitionLevelModalOpen(false);
+                          setEditingCompetitionLevel(null);
+                        }}
+                        className="bg-transparent hover:bg-red-500/20 text-red-400"
+                      >
+                        <X className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    <form onSubmit={handleCompetitionLevelSubmit} className="space-y-4">
+                      <div>
+                        <Label className="text-cyan-200">Название</Label>
+                        <Input
+                          value={competitionLevelForm.name}
+                          onChange={(e) => setCompetitionLevelForm({ ...competitionLevelForm, name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-cyan-200">Описание</Label>
+                        <Textarea
+                          value={competitionLevelForm.description}
+                          onChange={(e) => setCompetitionLevelForm({ ...competitionLevelForm, description: e.target.value })}
+                          rows={3}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-cyan-200">Флаг</Label>
+                        <Input
+                          value={competitionLevelForm.flag}
+                          onChange={(e) => setCompetitionLevelForm({ ...competitionLevelForm, flag: e.target.value })}
+                          placeholder="ENIGMA{...}"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-cyan-200">Порядок</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={competitionLevelForm.orderIndex}
+                            onChange={(e) => setCompetitionLevelForm({ ...competitionLevelForm, orderIndex: parseInt(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-cyan-200">Очки</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={competitionLevelForm.points}
+                            onChange={(e) => setCompetitionLevelForm({ ...competitionLevelForm, points: parseInt(e.target.value) || 100 })}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-cyan-200 mb-2 block">Задание</Label>
+                        <div className="mb-2">
+                          <label className="flex items-center gap-2 text-cyan-200/70">
+                            <input
+                              type="checkbox"
+                              checked={competitionLevelForm.useTaskFile}
+                              onChange={(e) => setCompetitionLevelForm({ ...competitionLevelForm, useTaskFile: e.target.checked })}
+                              className="w-4 h-4 rounded border-2 border-cyan-400/60 bg-[#0a0a0f] text-cyan-400"
+                            />
+                            Использовать файл вместо текста
+                          </label>
+                        </div>
+                        {competitionLevelForm.useTaskFile ? (
+                          <Input
+                            type="file"
+                            onChange={(e) => setCompetitionLevelForm({ ...competitionLevelForm, taskFile: e.target.files[0] })}
+                            accept=".txt,.pdf,.doc,.docx"
+                          />
+                        ) : (
+                          <Textarea
+                            value={competitionLevelForm.task}
+                            onChange={(e) => setCompetitionLevelForm({ ...competitionLevelForm, task: e.target.value })}
+                            rows={6}
+                            placeholder="Введите текст задания..."
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-cyan-200">Подсказка</Label>
+                        <Textarea
+                          value={competitionLevelForm.hint}
+                          onChange={(e) => setCompetitionLevelForm({ ...competitionLevelForm, hint: e.target.value })}
+                          rows={3}
+                          placeholder="Подсказка для уровня..."
+                        />
+                      </div>
+                      <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
+                        {editingCompetitionLevel ? 'Сохранить изменения' : 'Создать'}
+                      </Button>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

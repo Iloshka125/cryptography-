@@ -1,11 +1,13 @@
 const pool = require('../config/database');
+const crypto = require('crypto');
 
 class Level {
   // Создать уровень
   static async create({ categoryId, name, description, task, taskFilePath, flag, orderIndex, difficulty, points, estimatedTime, isPaid, price, hint }) {
+    const hash = crypto.randomBytes(32).toString('hex');
     const query = `
-      INSERT INTO levels (category_id, name, description, task, task_file_path, flag, order_index, difficulty, points, estimated_time, is_paid, price, hint)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      INSERT INTO levels (category_id, name, description, task, task_file_path, flag, order_index, difficulty, points, estimated_time, is_paid, price, hint, hash)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *;
     `;
     const values = [
@@ -22,6 +24,7 @@ class Level {
       isPaid === true || isPaid === 'true' ? true : false,
       (isPaid === true || isPaid === 'true') ? (parseInt(price) || 0) : 0,
       hint || null,
+      hash,
     ];
     const res = await pool.query(query, values);
     return res.rows[0];
@@ -42,6 +45,13 @@ class Level {
   static async findById(levelId) {
     const query = 'SELECT * FROM levels WHERE id = $1';
     const res = await pool.query(query, [levelId]);
+    return res.rows[0] || null;
+  }
+
+  // Получить уровень по hash
+  static async findByHash(hash) {
+    const query = 'SELECT * FROM levels WHERE hash = $1';
+    const res = await pool.query(query, [hash]);
     return res.rows[0] || null;
   }
 

@@ -48,13 +48,13 @@ export async function getCompetitions(userId) {
 }
 
 /**
- * Получить соревнование по ID
- * @param {number|string} competitionId - ID соревнования
+ * Получить соревнование по hash
+ * @param {string} competitionHash - Hash соревнования
  * @param {number|string} [userId] - ID пользователя
  * @returns {Promise<object>} - Соревнование
  */
-export async function getCompetitionById(competitionId, userId) {
-  const url = userId ? `/competitions/${competitionId}?user_id=${userId}` : `/competitions/${competitionId}`;
+export async function getCompetitionById(competitionHash, userId) {
+  const url = userId ? `/competitions/${competitionHash}?user_id=${userId}` : `/competitions/${competitionHash}`;
   return apiRequest(url, {
     method: 'GET',
   });
@@ -74,12 +74,12 @@ export async function createCompetition(competitionData) {
 
 /**
  * Обновить соревнование
- * @param {number|string} competitionId - ID соревнования
+ * @param {string} competitionHash - Hash соревнования
  * @param {object} competitionData - Данные для обновления
  * @returns {Promise<object>} - Обновленное соревнование
  */
-export async function updateCompetition(competitionId, competitionData) {
-  return apiRequest(`/competitions/${competitionId}`, {
+export async function updateCompetition(competitionHash, competitionData) {
+  return apiRequest(`/competitions/${competitionHash}`, {
     method: 'PUT',
     body: competitionData,
   });
@@ -87,23 +87,23 @@ export async function updateCompetition(competitionId, competitionData) {
 
 /**
  * Удалить соревнование
- * @param {number|string} competitionId - ID соревнования
+ * @param {string} competitionHash - Hash соревнования
  * @returns {Promise<object>} - Результат удаления
  */
-export async function deleteCompetition(competitionId) {
-  return apiRequest(`/competitions/${competitionId}`, {
+export async function deleteCompetition(competitionHash) {
+  return apiRequest(`/competitions/${competitionHash}`, {
     method: 'DELETE',
   });
 }
 
 /**
  * Присоединиться к соревнованию
- * @param {number|string} competitionId - ID соревнования
+ * @param {string} competitionHash - Hash соревнования
  * @param {number|string} userId - ID пользователя
  * @returns {Promise<object>} - Результат присоединения
  */
-export async function joinCompetition(competitionId, userId) {
-  return apiRequest(`/competitions/${competitionId}/join`, {
+export async function joinCompetition(competitionHash, userId) {
+  return apiRequest(`/competitions/${competitionHash}/join`, {
     method: 'POST',
     body: { user_id: userId },
   });

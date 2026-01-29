@@ -107,7 +107,7 @@ const CategoriesPage = () => {
     }
   };
 
-  const handlePurchaseLevel = async (levelId, price) => {
+  const handlePurchaseLevel = async (levelHash, price) => {
     if (!userId) {
       showToast('Требуется авторизация', 'error');
       return;
@@ -120,7 +120,7 @@ const CategoriesPage = () => {
 
     try {
       const { purchaseLevel } = await import('../api/categories.js');
-      const response = await purchaseLevel(levelId, userId);
+      const response = await purchaseLevel(levelHash, userId);
       
       if (response.success) {
         await fetchBalance(); // Обновляем баланс

@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input.jsx';
 import { getLevelById, checkLevelFlag } from '../api/categories.js';
 
 const LevelPage = () => {
-  const { categoryId, levelId } = useParams();
+  const { categoryHash, levelHash } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { userId, balance, subtractHints } = useAuth();
@@ -22,32 +22,35 @@ const LevelPage = () => {
   // Загружаем данные уровня из БД
   useEffect(() => {
     loadLevel();
-  }, [levelId, userId]);
+  }, [levelHash, userId]);
 
   const loadLevel = async () => {
     if (!userId) return;
     
     try {
       setLoading(true);
-      const response = await getLevelById(levelId, userId);
+      const response = await getLevelById(levelHash, userId);
       if (response.success && response.level) {
         const levelData = response.level;
         // Проверяем доступ к платному уровню
         if (levelData.isPaid && !levelData.purchased) {
           showToast('Этот уровень платный. Необходимо его купить.', 'error');
-          setTimeout(() => {
-            navigate('/enigma');
-          }, 2000);
+          setLoading(false);
+          navigate('/categories');
           return;
         }
         setLevel(levelData);
         setIsCompleted(levelData.completed || false);
       } else {
         showToast('Уровень не найден', 'error');
+        setLoading(false);
+        navigate('/categories');
       }
     } catch (error) {
       console.error('Ошибка загрузки уровня:', error);
       showToast('Ошибка загрузки уровня', 'error');
+      setLoading(false);
+      navigate('/categories');
     } finally {
       setLoading(false);
     }
@@ -81,7 +84,7 @@ const LevelPage = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await checkLevelFlag(levelId, flag, userId);
+      const response = await checkLevelFlag(levelHash, flag, userId);
       if (response.success) {
         if (response.correct) {
           // Если уровень уже был пройден ранее

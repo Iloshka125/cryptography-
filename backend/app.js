@@ -9,6 +9,7 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const levelSettingsRoutes = require('./routes/levelSettings');
 const levelExperienceRequirementsRoutes = require('./routes/levelExperienceRequirements');
 const competitionsRoutes = require('./routes/competitions');
+const competitionLevelsRoutes = require('./routes/competitionLevels');
 const createUsersTable = require('./migrations/createUsersTable');
 const createUserBalanceTable = require('./migrations/createUserBalanceTable');
 const addProfileFields = require('./migrations/addProfileFields');
@@ -32,6 +33,11 @@ const createUserPurchasedLevelsTable = require('./migrations/createUserPurchased
 const normalizeEmptyPhoneAndEmail = require('./migrations/normalizeEmptyPhoneAndEmail');
 const addLevelHintField = require('./migrations/addLevelHintField');
 const createCompetitionsTable = require('./migrations/createCompetitionsTable');
+const addWelcomeTitleToCompetitions = require('./migrations/addWelcomeTitleToCompetitions');
+const addHashToCompetitions = require('./migrations/addHashToCompetitions');
+const addHashToLevels = require('./migrations/addHashToLevels');
+const createCompetitionLevelsTable = require('./migrations/createCompetitionLevelsTable');
+const addPrizeAwardedToCompetitions = require('./migrations/addPrizeAwardedToCompetitions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -87,6 +93,11 @@ app.use((req, res, next) => {
     await normalizeEmptyPhoneAndEmail();
     await addLevelHintField();
     await createCompetitionsTable();
+    await addWelcomeTitleToCompetitions();
+    await addHashToCompetitions();
+    await addHashToLevels();
+    await createCompetitionLevelsTable();
+    await addPrizeAwardedToCompetitions();
   } catch (err) {
     console.error('Ошибка выполнения миграций:', err);
     process.exit(1);
@@ -103,6 +114,7 @@ app.use('/leaderboard', leaderboardRoutes);
 app.use('/level-settings', levelSettingsRoutes);
 app.use('/level-experience-requirements', levelExperienceRequirementsRoutes);
 app.use('/competitions', competitionsRoutes);
+app.use('/competition-levels', competitionLevelsRoutes);
 
 // Health check endpoint для Docker
 app.get('/health', (req, res) => {

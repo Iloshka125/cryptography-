@@ -34,7 +34,7 @@ const CompetitionsSection = ({ showToast }) => {
     }
   };
 
-  const handleJoin = async (competitionId, entryFee) => {
+  const handleJoin = async (competitionHash, entryFee) => {
     if (!userId) {
       showToast?.('Требуется авторизация', 'error');
       return;
@@ -46,7 +46,7 @@ const CompetitionsSection = ({ showToast }) => {
     }
 
     try {
-      const response = await joinCompetition(competitionId, userId);
+      const response = await joinCompetition(competitionHash, userId);
       if (response.success) {
         showToast?.(response.message || 'Вы успешно присоединились к соревнованию!', 'success');
         await fetchBalance();
@@ -145,27 +145,43 @@ const CompetitionsSection = ({ showToast }) => {
                       <span className="text-amber-300 font-semibold">{competition.entry_fee} монет</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between p-2 bg-cyan-400/10 rounded-lg">
-                    <span className="text-cyan-200 text-sm flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      {competition.status === 'upcoming' ? 'Начало' : 'До конца'}
-                    </span>
-                    <span className="text-cyan-300 font-semibold text-xs">
-                      {formatDate(competition.status === 'upcoming' ? competition.start_date : competition.end_date)}
-                    </span>
-                  </div>
+                  {competition.status === 'finished' && competition.winner ? (
+                    <div className="flex items-center justify-between p-2 bg-amber-400/10 rounded-lg">
+                      <span className="text-amber-200 text-sm flex items-center gap-2">
+                        <Trophy className="w-4 h-4" />
+                        Победитель
+                      </span>
+                      <span className="text-amber-300 font-semibold text-xs">
+                        {competition.winner.nickname || 'Неизвестно'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-2 bg-cyan-400/10 rounded-lg">
+                      <span className="text-cyan-200 text-sm flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        {competition.status === 'upcoming' ? 'Начало' : 'До конца'}
+                      </span>
+                      <span className="text-cyan-300 font-semibold text-xs">
+                        {formatDate(competition.status === 'upcoming' ? competition.start_date : competition.end_date)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {competition.isParticipating ? (
+                {competition.isParticipating && competition.status !== 'finished' ? (
                   <Button
-                    onClick={() => navigate(`/competition/${competition.id}`)}
+                    onClick={() => navigate(`/competition/${competition.hash || competition.id}`)}
                     className="w-full bg-cyan-400 hover:bg-cyan-300 text-black shadow-[0_0_15px_rgba(0,255,255,0.4)]"
                   >
                     ПЕРЕЙТИ К СОРЕВНОВАНИЮ
                   </Button>
+                ) : competition.status === 'finished' ? (
+                  <div className="w-full bg-gray-500/30 text-gray-300 text-center py-2 rounded-md">
+                    ЗАВЕРШЕНО
+                  </div>
                 ) : (
                   <Button
-                    onClick={() => handleJoin(competition.id, competition.entry_fee || 0)}
+                    onClick={() => handleJoin(competition.hash || competition.id, competition.entry_fee || 0)}
                     disabled={!canJoin || isFull}
                     className={`w-full ${
                       canJoin && !isFull

@@ -22,6 +22,7 @@ class Category {
           json_agg(
             json_build_object(
               'id', l.id,
+              'hash', l.hash,
               'name', l.name,
               'description', l.description,
               'task', l.task,

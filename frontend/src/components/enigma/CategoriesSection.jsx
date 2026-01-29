@@ -109,10 +109,10 @@ export const CategoryLevels = ({
                 if (level.locked && level.isPaid && !level.purchased) {
                   // Покупка уровня
                   if (onPurchaseLevel) {
-                    onPurchaseLevel(level.id, level.price);
+                    onPurchaseLevel(level.hash || level.id, level.price);
                   }
                 } else if (!level.locked) {
-                  navigate(`/level/${category.id}/${level.id}`);
+                  navigate(`/level/${category.id}/${level.hash || level.id}`);
                 }
               }}
               disabled={level.locked && !(level.isPaid && !level.purchased)}

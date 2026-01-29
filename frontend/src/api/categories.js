@@ -172,12 +172,12 @@ export async function deleteLevel(levelId) {
 }
 
 /**
- * Получить уровень по ID (без флага)
- * @param {number|string} levelId - ID уровня
+ * Получить уровень по hash (без флага)
+ * @param {string} levelHash - Hash уровня
  * @returns {Promise<object>} - Данные уровня
  */
-export async function getLevelById(levelId, userId) {
-  const url = userId ? `/categories/levels/${levelId}?user_id=${userId}` : `/categories/levels/${levelId}`;
+export async function getLevelById(levelHash, userId) {
+  const url = userId ? `/categories/levels/${levelHash}?user_id=${userId}` : `/categories/levels/${levelHash}`;
   return apiRequest(url, {
     method: 'GET',
   });
@@ -185,13 +185,13 @@ export async function getLevelById(levelId, userId) {
 
 /**
  * Проверить правильность флага уровня
- * @param {number|string} levelId - ID уровня
+ * @param {string} levelHash - Hash уровня
  * @param {string} flag - Введенный флаг
  * @param {number|string} userId - ID пользователя
  * @returns {Promise<object>} - Результат проверки
  */
-export async function checkLevelFlag(levelId, flag, userId) {
-  return apiRequest(`/categories/levels/${levelId}/check`, {
+export async function checkLevelFlag(levelHash, flag, userId) {
+  return apiRequest(`/categories/levels/${levelHash}/check`, {
     method: 'POST',
     body: { flag, user_id: userId },
   });
@@ -199,12 +199,12 @@ export async function checkLevelFlag(levelId, flag, userId) {
 
 /**
  * Купить уровень
- * @param {number|string} levelId - ID уровня
+ * @param {string} levelHash - Hash уровня
  * @param {number|string} userId - ID пользователя
  * @returns {Promise<object>} - Результат покупки
  */
-export async function purchaseLevel(levelId, userId) {
-  return apiRequest(`/categories/levels/${levelId}/purchase`, {
+export async function purchaseLevel(levelHash, userId) {
+  return apiRequest(`/categories/levels/${levelHash}/purchase`, {
     method: 'POST',
     body: { user_id: userId },
   });

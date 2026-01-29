@@ -13,6 +13,7 @@ import VersusPage from './pages/VersusPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import LevelPage from './pages/LevelPage.jsx';
 import CompetitionPage from './pages/CompetitionPage.jsx';
+import CompetitionLevelPage from './pages/CompetitionLevelPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 
@@ -159,7 +160,7 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/level/:categoryId/:levelId" 
+        path="/level/:categoryHash/:levelHash" 
         element={
           <ProtectedRoute requireAuth={true}>
             <LevelPage />
@@ -167,10 +168,18 @@ const AppRoutes = () => {
         } 
       />
       <Route 
-        path="/competition/:competitionId" 
+        path="/competition/:competitionHash" 
         element={
           <ProtectedRoute requireAuth={true}>
             <CompetitionPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/competition/:competitionHash/level/:levelHash" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <CompetitionLevelPage />
           </ProtectedRoute>
         } 
       />
