@@ -5,6 +5,11 @@ import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import EnigmaPage from './pages/EnigmaPage.jsx';
+import CategoriesPage from './pages/CategoriesPage.jsx';
+import BattlePassPage from './pages/BattlePassPage.jsx';
+import LeaderboardPage from './pages/LeaderboardPage.jsx';
+import CompetitionsListPage from './pages/CompetitionsListPage.jsx';
+import VersusPage from './pages/VersusPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import LevelPage from './pages/LevelPage.jsx';
 import CompetitionPage from './pages/CompetitionPage.jsx';
@@ -72,7 +77,7 @@ const AppRoutes = () => {
   
   return (
     <Routes>
-      <Route index element={<Navigate to={isAuthenticated ? "/enigma" : "/home"} replace />} />
+      <Route index element={<Navigate to={isAuthenticated ? "/categories" : "/home"} replace />} />
       <Route 
         path="/home" 
         element={
@@ -85,7 +90,47 @@ const AppRoutes = () => {
         path="/enigma" 
         element={
           <ProtectedRoute requireAuth={true}>
-            <EnigmaPage />
+            <Navigate to="/categories" replace />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/categories" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <CategoriesPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/battle" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <BattlePassPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/leaderboard" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <LeaderboardPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/competitions" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <CompetitionsListPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/1vs1" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <VersusPage />
           </ProtectedRoute>
         } 
       />
@@ -141,7 +186,7 @@ const AppRoutes = () => {
         path="*" 
         element={
           <Navigate 
-            to={isAuthenticated ? "/enigma" : "/home"} 
+            to={isAuthenticated ? "/categories" : "/home"} 
             replace 
           />
         } 

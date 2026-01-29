@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Coins, Zap, ShoppingCart, Medal, Grid3x3, Star, Trophy, Gamepad2, User, Settings, renderIconByValue } from '../IconSet.jsx';
 import Button from '../ui/button.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
@@ -12,7 +12,22 @@ const HeaderBar = ({
   userAvatar,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAdmin } = useAuth();
+
+  // Определяем текущую секцию на основе URL
+  const getCurrentSection = () => {
+    if (currentSection) return currentSection; // Если передано явно, используем это
+    const path = location.pathname;
+    if (path.startsWith('/categories')) return 'categories';
+    if (path.startsWith('/battle')) return 'battlepass';
+    if (path.startsWith('/leaderboard')) return 'leaderboard';
+    if (path.startsWith('/competitions')) return 'competitions';
+    if (path.startsWith('/1vs1') || path.startsWith('/one-vs-one')) return 'versus';
+    return '';
+  };
+
+  const activeSection = getCurrentSection();
   
   return (
   <header className="relative z-10 border-b border-cyan-500/30 bg-[#0f0f1a]/70 backdrop-blur">
@@ -30,7 +45,7 @@ const HeaderBar = ({
           <span className="text-cyan-200">{hints}</span>
         </div>
         <button
-          onClick={() => onChangeSection('shop')}
+          onClick={() => onChangeSection?.('shop')}
           className="p-2 bg-[#0a0a0f] border border-cyan-400/50 rounded-lg shadow-[0_0_15px_rgba(0,255,255,0.3)] hover:bg-cyan-500/10 transition-all relative"
           title="Магазин"
         >
@@ -50,9 +65,9 @@ const HeaderBar = ({
     <div className="border-t border-cyan-500/20">
       <div className="max-w-7xl mx-auto px-4 py-3 flex gap-3 flex-wrap">
         <Button
-          onClick={() => onChangeSection('categories')}
+          onClick={() => navigate('/categories')}
           className={`flex items-center justify-center gap-2 ${
-            currentSection === 'categories'
+            activeSection === 'categories'
               ? 'bg-cyan-400 text-black'
               : 'bg-transparent border border-cyan-400 text-cyan-200'
           }`}
@@ -61,9 +76,9 @@ const HeaderBar = ({
           <span>КАТЕГОРИИ</span>
         </Button>
         <Button
-          onClick={() => onChangeSection('battlepass')}
+          onClick={() => navigate('/battle')}
           className={`flex items-center justify-center gap-2 ${
-            currentSection === 'battlepass'
+            activeSection === 'battlepass'
               ? 'bg-cyan-400 text-black'
               : 'bg-transparent border border-cyan-400 text-cyan-200'
           }`}
@@ -72,9 +87,9 @@ const HeaderBar = ({
           <span>BATTLE PASS</span>
         </Button>
         <Button
-          onClick={() => onChangeSection('leaderboard')}
+          onClick={() => navigate('/leaderboard')}
           className={`flex items-center justify-center gap-2 ${
-            currentSection === 'leaderboard'
+            activeSection === 'leaderboard'
               ? 'bg-cyan-400 text-black'
               : 'bg-transparent border border-cyan-400 text-cyan-200'
           }`}
@@ -83,9 +98,9 @@ const HeaderBar = ({
           <span>LEADERBOARD</span>
         </Button>
         <Button
-          onClick={() => onChangeSection('competitions')}
+          onClick={() => navigate('/competitions')}
           className={`flex items-center justify-center gap-2 ${
-            currentSection === 'competitions'
+            activeSection === 'competitions'
               ? 'bg-cyan-400 text-black'
               : 'bg-transparent border border-cyan-400 text-cyan-200'
           }`}
@@ -94,9 +109,9 @@ const HeaderBar = ({
           <span>СОРЕВНОВАНИЯ</span>
         </Button>
         <Button
-          onClick={() => onChangeSection('versus')}
+          onClick={() => navigate('/1vs1')}
           className={`flex items-center justify-center gap-2 ${
-            currentSection === 'versus'
+            activeSection === 'versus'
               ? 'bg-cyan-400 text-black'
               : 'bg-transparent border border-cyan-400 text-cyan-200'
           }`}
@@ -122,8 +137,8 @@ const HeaderBar = ({
 HeaderBar.propTypes = {
   coins: PropTypes.number.isRequired,
   hints: PropTypes.number.isRequired,
-  onChangeSection: PropTypes.func.isRequired,
-  currentSection: PropTypes.string.isRequired,
+  onChangeSection: PropTypes.func,
+  currentSection: PropTypes.string,
   userAvatar: PropTypes.node.isRequired,
 };
 
