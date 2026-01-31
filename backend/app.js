@@ -10,6 +10,7 @@ const levelSettingsRoutes = require('./routes/levelSettings');
 const levelExperienceRequirementsRoutes = require('./routes/levelExperienceRequirements');
 const competitionsRoutes = require('./routes/competitions');
 const competitionLevelsRoutes = require('./routes/competitionLevels');
+const duelsRoutes = require('./routes/duels');
 const createUsersTable = require('./migrations/createUsersTable');
 const createUserBalanceTable = require('./migrations/createUserBalanceTable');
 const addProfileFields = require('./migrations/addProfileFields');
@@ -38,6 +39,7 @@ const addHashToCompetitions = require('./migrations/addHashToCompetitions');
 const addHashToLevels = require('./migrations/addHashToLevels');
 const createCompetitionLevelsTable = require('./migrations/createCompetitionLevelsTable');
 const addPrizeAwardedToCompetitions = require('./migrations/addPrizeAwardedToCompetitions');
+const createDuelsTables = require('./migrations/createDuelsTables');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -98,6 +100,7 @@ app.use((req, res, next) => {
     await addHashToLevels();
     await createCompetitionLevelsTable();
     await addPrizeAwardedToCompetitions();
+    await createDuelsTables();
   } catch (err) {
     console.error('Ошибка выполнения миграций:', err);
     process.exit(1);
@@ -115,6 +118,7 @@ app.use('/level-settings', levelSettingsRoutes);
 app.use('/level-experience-requirements', levelExperienceRequirementsRoutes);
 app.use('/competitions', competitionsRoutes);
 app.use('/competition-levels', competitionLevelsRoutes);
+app.use('/duels', duelsRoutes);
 
 // Health check endpoint для Docker
 app.get('/health', (req, res) => {
