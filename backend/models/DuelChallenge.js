@@ -3,18 +3,23 @@ const DuelTask = require('./DuelTask');
 
 class DuelChallenge {
   // Создать заявку на дуэль
-  static async create({ challengerId, opponentId, categoryId, difficulty, stake }) {
+  static async create({ challengerId, opponentId, duelCategoryId, difficulty, stake }) {
+    // Устанавливаем время истечения заявки (5 минут от текущего времени)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 5);
+
     const query = `
-      INSERT INTO duel_challenges (challenger_id, opponent_id, category_id, difficulty, stake, status)
-      VALUES ($1, $2, $3, $4, $5, 'pending')
+      INSERT INTO duel_challenges (challenger_id, opponent_id, duel_category_id, difficulty, stake, status, expires_at)
+      VALUES ($1, $2, $3, $4, $5, 'pending', $6)
       RETURNING *;
     `;
     const values = [
       challengerId,
       opponentId || null,
-      categoryId || null,
+      duelCategoryId || null,
       difficulty || null,
       stake || 0,
+      expiresAt,
     ];
     const res = await pool.query(query, values);
     return res.rows[0];
@@ -40,39 +45,46 @@ class DuelChallenge {
 
   // Получить все заявки (с фильтрами)
   static async findAll(filters = {}) {
-    let query = `
-      SELECT 
-        dc.*,
-        u1.nickname as challenger_nickname,
-        u1.avatar as challenger_avatar,
-        u2.nickname as opponent_nickname,
-        u2.avatar as opponent_avatar
-      FROM duel_challenges dc
-      LEFT JOIN users u1 ON dc.challenger_id = u1.id
-      LEFT JOIN users u2 ON dc.opponent_id = u2.id
-      WHERE 1=1
-    `;
-    const values = [];
-    let paramIndex = 1;
+    try {
+      let query = `
+        SELECT 
+          dc.*,
+          u1.nickname as challenger_nickname,
+          u1.avatar as challenger_avatar,
+          u2.nickname as opponent_nickname,
+          u2.avatar as opponent_avatar
+        FROM duel_challenges dc
+        LEFT JOIN users u1 ON dc.challenger_id = u1.id
+        LEFT JOIN users u2 ON dc.opponent_id = u2.id
+        WHERE 1=1
+      `;
+      const values = [];
+      let paramIndex = 1;
 
-    if (filters.status) {
-      query += ` AND dc.status = $${paramIndex++}`;
-      values.push(filters.status);
+      if (filters.status) {
+        query += ` AND dc.status = $${paramIndex++}`;
+        values.push(filters.status);
+      }
+
+      if (filters.userId) {
+        // Используем один параметр дважды для проверки userId в обоих полях
+        query += ` AND (dc.challenger_id = $${paramIndex} OR dc.opponent_id = $${paramIndex})`;
+        values.push(filters.userId);
+        paramIndex++;
+      }
+
+      if (filters.opponentId === null) {
+        query += ` AND dc.opponent_id IS NULL`; // Рандомные заявки
+      }
+
+      query += ' ORDER BY dc.created_at DESC';
+      const res = await pool.query(query, values);
+      return res.rows;
+    } catch (err) {
+      console.error('Ошибка в DuelChallenge.findAll:', err);
+      console.error('Stack trace:', err.stack);
+      throw err;
     }
-
-    if (filters.userId) {
-      query += ` AND (dc.challenger_id = $${paramIndex++} OR dc.opponent_id = $${paramIndex})`;
-      values.push(filters.userId);
-      paramIndex++;
-    }
-
-    if (filters.opponentId === null) {
-      query += ` AND dc.opponent_id IS NULL`; // Рандомные заявки
-    }
-
-    query += ' ORDER BY dc.created_at DESC';
-    const res = await pool.query(query, values);
-    return res.rows;
   }
 
   // Принять заявку
@@ -106,12 +118,12 @@ class DuelChallenge {
       return null;
     }
 
-    // Устанавливаем время старта (через 24 часа)
+    // Устанавливаем время старта (через 1 минуту после принятия)
     const startTime = new Date();
-    startTime.setHours(startTime.getHours() + 24);
+    startTime.setMinutes(startTime.getMinutes() + 1);
     
     await pool.query(
-      'UPDATE duel_challenges SET started_at = $1 WHERE id = $2',
+      'UPDATE duel_challenges SET started_at = $1, expires_at = NULL WHERE id = $2',
       [startTime, challengeId]
     );
 
@@ -127,7 +139,7 @@ class DuelChallenge {
 
     // Выбираем случайное задание по фильтрам
     const task = await DuelTask.findRandom({
-      categoryId: challenge.category_id,
+      duelCategoryId: challenge.duel_category_id,
       difficulty: challenge.difficulty,
     });
 
@@ -204,9 +216,9 @@ class DuelChallenge {
         [userId, challengeId]
       );
 
-      // Начисляем приз (банк - 20% комиссии)
+      // Начисляем приз (90% банка, 10% комиссия)
       const totalStake = challenge.stake * 2; // Ставки обоих участников
-      const commission = Math.floor(totalStake * 0.2);
+      const commission = Math.floor(totalStake * 0.1);
       const prize = totalStake - commission;
 
       const Balance = require('./Balance');
@@ -248,15 +260,21 @@ class DuelChallenge {
     return res.rows;
   }
 
-  // Отменить заявку
+  // Отменить заявку (до начала дуэли)
   static async cancel(challengeId, userId) {
     const challenge = await this.findById(challengeId);
-    if (!challenge || challenge.challenger_id !== userId) {
+    if (!challenge) {
       return null;
     }
 
-    if (challenge.status !== 'pending') {
-      return null; // Можно отменить только pending заявки
+    // Проверяем, что пользователь является участником
+    if (challenge.challenger_id !== userId && challenge.opponent_id !== userId) {
+      return null; // Пользователь не является участником
+    }
+
+    // Можно отменить только до начала дуэли (pending или accepted, но не active)
+    if (challenge.status === 'active' || challenge.status === 'completed' || challenge.status === 'cancelled') {
+      return null; // Дуэль уже началась или завершена
     }
 
     const query = `

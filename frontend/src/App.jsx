@@ -14,6 +14,7 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import LevelPage from './pages/LevelPage.jsx';
 import CompetitionPage from './pages/CompetitionPage.jsx';
 import CompetitionLevelPage from './pages/CompetitionLevelPage.jsx';
+import DuelPage from './pages/DuelPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 
@@ -180,6 +181,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requireAuth={true}>
             <CompetitionLevelPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/duels/:challengeId" 
+        element={
+          <ProtectedRoute requireAuth={true}>
+            <DuelPage />
           </ProtectedRoute>
         } 
       />

@@ -1,8 +1,10 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const pool = require('../config/database');
 const DuelChallenge = require('../models/DuelChallenge');
 const DuelTask = require('../models/DuelTask');
+const DuelCategory = require('../models/DuelCategory');
 const Balance = require('../models/Balance');
 const router = express.Router();
 
@@ -48,12 +50,28 @@ const requireAdmin = async (req, res, next) => {
   }
 };
 
-// Проверить и запустить дуэли, которые должны начаться
+// Проверить и запустить дуэли, которые должны начаться, и удалить истекшие заявки
 router.use(async (req, res, next) => {
   try {
+    const now = new Date();
+    const Balance = require('../models/Balance');
+
+    // Удаляем истекшие pending заявки и возвращаем ставку
+    const expiredChallenges = await pool.query(
+      `SELECT id, challenger_id, stake FROM duel_challenges 
+       WHERE status = 'pending' AND expires_at IS NOT NULL AND expires_at <= $1`,
+      [now]
+    );
+
+    for (const challenge of expiredChallenges.rows) {
+      // Возвращаем ставку
+      await Balance.addCoins(challenge.challenger_id, challenge.stake);
+      // Удаляем заявку
+      await pool.query('DELETE FROM duel_challenges WHERE id = $1', [challenge.id]);
+    }
+
     // Находим все принятые заявки, которые должны начаться
     const acceptedChallenges = await DuelChallenge.findAll({ status: 'accepted' });
-    const now = new Date();
 
     for (const challenge of acceptedChallenges) {
       if (challenge.started_at && new Date(challenge.started_at) <= now) {
@@ -62,8 +80,99 @@ router.use(async (req, res, next) => {
     }
   } catch (err) {
     console.error('Ошибка проверки дуэлей:', err);
+    // Не блокируем запрос, если проверка не удалась
   }
   next();
+});
+
+// ========== КАТЕГОРИИ ДУЭЛЕЙ (админ) ==========
+
+// Получить все категории
+router.get('/categories', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const categories = await DuelCategory.findAll();
+    res.json({ success: true, categories });
+  } catch (err) {
+    console.error('Ошибка получения категорий дуэлей:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Создать категорию
+router.post('/categories', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { name, description, icon, color } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Требуется название категории' });
+    }
+
+    const newCategory = await DuelCategory.create({
+      name,
+      description: description || null,
+      icon: icon || null,
+      color: color || '#00ffff',
+    });
+
+    res.status(201).json({ success: true, category: newCategory });
+  } catch (err) {
+    console.error('Ошибка создания категории дуэли:', err);
+    if (err.code === '23505') { // Unique violation
+      return res.status(400).json({ error: 'Категория с таким названием уже существует' });
+    }
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Обновить категорию
+router.put('/categories/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, icon, color } = req.body;
+
+    const updated = await DuelCategory.update(parseInt(id), {
+      name,
+      description,
+      icon,
+      color,
+    });
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Категория не найдена' });
+    }
+
+    res.json({ success: true, category: updated });
+  } catch (err) {
+    console.error('Ошибка обновления категории дуэли:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Удалить категорию
+router.delete('/categories/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await DuelCategory.delete(parseInt(id));
+    if (!deleted) {
+      return res.status(404).json({ error: 'Категория не найдена' });
+    }
+    res.json({ success: true, message: 'Категория удалена' });
+  } catch (err) {
+    console.error('Ошибка удаления категории дуэли:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Получить категории для пользователей (без админ прав)
+router.get('/categories/public', requireAuth, async (req, res) => {
+  try {
+    const categories = await DuelCategory.findAll();
+    res.json({ success: true, categories });
+  } catch (err) {
+    console.error('Ошибка получения категорий дуэлей:', err);
+    console.error('Stack trace:', err.stack);
+    res.status(500).json({ error: 'Ошибка сервера', details: err.message });
+  }
 });
 
 // ========== ЗАДАНИЯ ДУЭЛЕЙ (админ) ==========
@@ -82,7 +191,7 @@ router.get('/tasks', requireAuth, requireAdmin, async (req, res) => {
 // Создать задание
 router.post('/tasks', requireAuth, requireAdmin, upload.single('taskFile'), async (req, res) => {
   try {
-    const { categoryId, levelId, name, description, task, flag, difficulty, timeLimit, points, hint } = req.body;
+    const { duelCategoryId, name, description, task, flag, difficulty, hint } = req.body;
     
     if (!name || !flag) {
       return res.status(400).json({ error: 'Требуется название и флаг' });
@@ -91,17 +200,17 @@ router.post('/tasks', requireAuth, requireAdmin, upload.single('taskFile'), asyn
     const taskFilePath = req.file ? `uploads/tasks/${req.file.filename}` : null;
     const finalTask = taskFilePath ? null : (task || null);
 
+    // Преобразуем пустые строки и строку "null" в null
+    const cleanDuelCategoryId = (!duelCategoryId || duelCategoryId === 'null' || duelCategoryId === '') ? null : parseInt(duelCategoryId);
+
     const newTask = await DuelTask.create({
-      categoryId: categoryId || null,
-      levelId: levelId || null,
+      duelCategoryId: cleanDuelCategoryId,
       name,
       description: description || null,
       task: finalTask,
       taskFilePath,
       flag,
       difficulty: difficulty || 'medium',
-      timeLimit: timeLimit ? parseInt(timeLimit) : 300,
-      points: points ? parseInt(points) : 100,
       hint: hint || null,
     });
 
@@ -116,7 +225,7 @@ router.post('/tasks', requireAuth, requireAdmin, upload.single('taskFile'), asyn
 router.put('/tasks/:id', requireAuth, requireAdmin, upload.single('taskFile'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, task, flag, difficulty, timeLimit, points, hint, isActive } = req.body;
+    const { name, description, task, flag, difficulty, hint, isActive } = req.body;
 
     const updates = {};
     if (name !== undefined) updates.name = name;
@@ -124,8 +233,6 @@ router.put('/tasks/:id', requireAuth, requireAdmin, upload.single('taskFile'), a
     if (task !== undefined) updates.task = task;
     if (flag !== undefined) updates.flag = flag;
     if (difficulty !== undefined) updates.difficulty = difficulty;
-    if (timeLimit !== undefined) updates.timeLimit = parseInt(timeLimit);
-    if (points !== undefined) updates.points = parseInt(points);
     if (hint !== undefined) updates.hint = hint;
     if (isActive !== undefined) updates.isActive = isActive === 'true' || isActive === true;
 
@@ -175,24 +282,39 @@ router.get('/challenges', requireAuth, async (req, res) => {
     }
     
     // Получаем заявки пользователя и доступные для принятия
-    const myChallenges = await DuelChallenge.findAll({ ...filters, userId: req.userId });
-    const availableChallenges = await DuelChallenge.findAll({ status: 'pending', opponentId: null });
+    let myChallenges = [];
+    let availableChallenges = [];
+    
+    try {
+      myChallenges = await DuelChallenge.findAll({ ...filters, userId: req.userId });
+    } catch (err) {
+      console.error('Ошибка получения моих заявок:', err);
+      // Продолжаем выполнение, возвращаем пустой массив
+    }
+    
+    try {
+      availableChallenges = await DuelChallenge.findAll({ status: 'pending', opponentId: null });
+    } catch (err) {
+      console.error('Ошибка получения доступных заявок:', err);
+      // Продолжаем выполнение, возвращаем пустой массив
+    }
     
     res.json({ 
       success: true, 
-      myChallenges,
-      availableChallenges: availableChallenges.filter(c => c.challenger_id !== req.userId)
+      myChallenges: myChallenges || [],
+      availableChallenges: (availableChallenges || []).filter(c => c.challenger_id !== req.userId)
     });
   } catch (err) {
     console.error('Ошибка получения заявок на дуэль:', err);
-    res.status(500).json({ error: 'Ошибка сервера' });
+    console.error('Stack trace:', err.stack);
+    res.status(500).json({ error: 'Ошибка сервера', details: err.message });
   }
 });
 
 // Создать заявку на дуэль
 router.post('/challenges', requireAuth, async (req, res) => {
   try {
-    const { opponentId, categoryId, difficulty, stake } = req.body;
+    const { opponentId, duelCategoryId, difficulty, stake } = req.body;
     
     if (!stake || stake <= 0) {
       return res.status(400).json({ error: 'Ставка должна быть больше 0' });
@@ -210,7 +332,7 @@ router.post('/challenges', requireAuth, async (req, res) => {
     const challenge = await DuelChallenge.create({
       challengerId: req.userId,
       opponentId: opponentId || null,
-      categoryId: categoryId || null,
+      duelCategoryId: duelCategoryId || null,
       difficulty: difficulty || null,
       stake: parseInt(stake),
     });
@@ -275,11 +397,25 @@ router.get('/challenges/:id', requireAuth, async (req, res) => {
     // Получаем участников
     const participants = await DuelChallenge.getParticipants(parseInt(id));
 
+    // Если дуэль активна, получаем задание
+    let task = null;
+    if (challenge.status === 'active' && challenge.task_id) {
+      task = await DuelTask.findById(challenge.task_id);
+      // Не возвращаем флаг в задании
+      if (task) {
+        task = {
+          ...task,
+          flag: undefined, // Убираем флаг из ответа
+        };
+      }
+    }
+
     res.json({ 
       success: true, 
       challenge: {
         ...challenge,
         participants,
+        task, // Добавляем задание, если дуэль активна
       }
     });
   } catch (err) {
@@ -320,8 +456,14 @@ router.post('/challenges/:id/cancel', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Заявка не найдена' });
     }
 
-    if (challenge.challenger_id !== req.userId) {
-      return res.status(403).json({ error: 'Вы можете отменить только свои заявки' });
+    // Проверяем, что пользователь является участником
+    if (challenge.challenger_id !== req.userId && challenge.opponent_id !== req.userId) {
+      return res.status(403).json({ error: 'Вы не являетесь участником этой дуэли' });
+    }
+
+    // Проверяем, что дуэль еще не началась
+    if (challenge.status === 'active' || challenge.status === 'completed') {
+      return res.status(400).json({ error: 'Нельзя отменить дуэль, которая уже началась или завершена' });
     }
 
     const cancelled = await DuelChallenge.cancel(parseInt(id), req.userId);
@@ -329,8 +471,11 @@ router.post('/challenges/:id/cancel', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Не удалось отменить заявку' });
     }
 
-    // Возвращаем ставку
-    await Balance.addCoins(req.userId, challenge.stake);
+    // Возвращаем ставки обоим участникам
+    await Balance.addCoins(challenge.challenger_id, challenge.stake);
+    if (challenge.opponent_id) {
+      await Balance.addCoins(challenge.opponent_id, challenge.stake);
+    }
 
     res.json({ success: true, challenge: cancelled });
   } catch (err) {

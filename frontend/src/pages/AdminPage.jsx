@@ -39,11 +39,21 @@ import {
   updateCompetitionLevel,
   deleteCompetitionLevel,
 } from '../api/competitionLevels.js';
+import {
+  getDuelCategoriesAdmin,
+  createDuelCategory,
+  updateDuelCategory,
+  deleteDuelCategory,
+  getDuelTasks,
+  createDuelTask,
+  updateDuelTask,
+  deleteDuelTask,
+} from '../api/duels.js';
 
 const AdminPage = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { isAdmin } = useAuth();
+  const { isAdmin, userId } = useAuth();
 
   // Состояние для категорий
   const [categories, setCategories] = useState([]);
@@ -130,6 +140,35 @@ const AdminPage = () => {
     hint: '',
   });
 
+  // Состояние для категорий дуэлей
+  const [duelCategories, setDuelCategories] = useState([]);
+  const [selectedDuelCategory, setSelectedDuelCategory] = useState(null);
+  const [isDuelCategoryModalOpen, setIsDuelCategoryModalOpen] = useState(false);
+  const [editingDuelCategory, setEditingDuelCategory] = useState(null);
+  const [duelCategoryForm, setDuelCategoryForm] = useState({
+    name: '',
+    description: '',
+    icon: '',
+    color: '#00ffff',
+  });
+
+  // Состояние для заданий дуэлей
+  const [duelTasks, setDuelTasks] = useState([]);
+  const [isDuelTaskModalOpen, setIsDuelTaskModalOpen] = useState(false);
+  const [editingDuelTask, setEditingDuelTask] = useState(null);
+  const [duelTaskForm, setDuelTaskForm] = useState({
+    name: '',
+    description: '',
+    task: '',
+    taskFile: null,
+    useTaskFile: false,
+    flag: '',
+    duelCategoryId: null,
+    difficulty: 'medium',
+    hint: '',
+    isActive: true,
+  });
+
   // Если пользователь не админ, редирект (это также обрабатывается в AdminRoute, но на всякий случай)
   if (!isAdmin) {
     return null;
@@ -141,6 +180,8 @@ const AdminPage = () => {
     loadBattlePassRewards();
     loadLevelExperienceRequirements();
     loadCompetitions();
+    loadDuelCategories();
+    loadDuelTasks();
   }, []);
 
   const loadLevelExperienceRequirements = async () => {
@@ -687,6 +728,136 @@ const AdminPage = () => {
     loadCompetitionLevels(competition.id);
   };
 
+  // ========== ДУЭЛИ ==========
+
+  const loadDuelCategories = async () => {
+    try {
+      const response = await getDuelCategoriesAdmin(userId);
+      if (response.success && response.categories) {
+        setDuelCategories(response.categories);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки категорий дуэлей:', error);
+      showToast('Ошибка загрузки категорий дуэлей', 'error');
+    }
+  };
+
+  const loadDuelTasks = async () => {
+    try {
+      const response = await getDuelTasks(userId);
+      if (response.success && response.tasks) {
+        setDuelTasks(response.tasks);
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки заданий дуэлей:', error);
+      showToast('Ошибка загрузки заданий дуэлей', 'error');
+    }
+  };
+
+  const handleDuelCategorySubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingDuelCategory) {
+        const response = await updateDuelCategory(editingDuelCategory.id, duelCategoryForm, userId);
+        if (response.success) {
+          showToast('Категория дуэлей обновлена!', 'success');
+          setIsDuelCategoryModalOpen(false);
+          setEditingDuelCategory(null);
+          setDuelCategoryForm({ name: '', description: '', icon: '', color: '#00ffff' });
+          await loadDuelCategories();
+        }
+      } else {
+        const response = await createDuelCategory(duelCategoryForm, userId);
+        if (response.success) {
+          showToast('Категория дуэлей создана!', 'success');
+          setIsDuelCategoryModalOpen(false);
+          setDuelCategoryForm({ name: '', description: '', icon: '', color: '#00ffff' });
+          await loadDuelCategories();
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения категории дуэлей:', error);
+      showToast(error.message || 'Ошибка сохранения категории дуэлей', 'error');
+    }
+  };
+
+  const handleDeleteDuelCategory = async (categoryId) => {
+    if (window.confirm('Вы уверены, что хотите удалить эту категорию дуэлей?')) {
+      try {
+        const response = await deleteDuelCategory(categoryId, userId);
+        if (response.success) {
+          showToast('Категория дуэлей удалена', 'success');
+          await loadDuelCategories();
+        }
+      } catch (error) {
+        console.error('Ошибка удаления категории дуэлей:', error);
+        showToast(error.message || 'Ошибка удаления категории дуэлей', 'error');
+      }
+    }
+  };
+
+  const handleDuelTaskSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = {
+        name: duelTaskForm.name,
+        description: duelTaskForm.description || '',
+        task: duelTaskForm.useTaskFile ? '' : (duelTaskForm.task || ''),
+        taskFile: duelTaskForm.useTaskFile ? duelTaskForm.taskFile : null,
+        flag: duelTaskForm.flag,
+        duelCategoryId: duelTaskForm.duelCategoryId || null,
+        difficulty: duelTaskForm.difficulty,
+        hint: duelTaskForm.hint || '',
+        isActive: duelTaskForm.isActive,
+      };
+
+      if (editingDuelTask) {
+        const response = await updateDuelTask(editingDuelTask.id, formData, userId);
+        if (response.success) {
+          showToast('Задание дуэли обновлено!', 'success');
+          setIsDuelTaskModalOpen(false);
+          setEditingDuelTask(null);
+          setDuelTaskForm({
+            name: '', description: '', task: '', taskFile: null, useTaskFile: false,
+            flag: '', duelCategoryId: null, difficulty: 'medium',
+            hint: '', isActive: true,
+          });
+          await loadDuelTasks();
+        }
+      } else {
+        const response = await createDuelTask(formData, userId);
+        if (response.success) {
+          showToast('Задание дуэли создано!', 'success');
+          setIsDuelTaskModalOpen(false);
+          setDuelTaskForm({
+            name: '', description: '', task: '', taskFile: null, useTaskFile: false,
+            flag: '', duelCategoryId: null, difficulty: 'medium',
+            hint: '', isActive: true,
+          });
+          await loadDuelTasks();
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения задания дуэли:', error);
+      showToast(error.message || 'Ошибка сохранения задания дуэли', 'error');
+    }
+  };
+
+  const handleDeleteDuelTask = async (taskId) => {
+    if (window.confirm('Вы уверены, что хотите удалить это задание дуэли?')) {
+      try {
+        const response = await deleteDuelTask(taskId, userId);
+        if (response.success) {
+          showToast('Задание дуэли удалено', 'success');
+          await loadDuelTasks();
+        }
+      } catch (error) {
+        console.error('Ошибка удаления задания дуэли:', error);
+        showToast(error.message || 'Ошибка удаления задания дуэли', 'error');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen page-fade-in">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -844,6 +1015,141 @@ const AdminPage = () => {
               {competitions.length === 0 && (
                 <p className="text-cyan-200/50 text-center py-8 col-span-full">Нет соревнований</p>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Секция Дуэлей */}
+        <div className="mb-8">
+          <div className="p-6 border-2 border-cyan-400/30 rounded-lg bg-[#0a0a0f]/70 shadow-[0_0_20px_rgba(0,255,255,0.2)] backdrop-blur-sm">
+            <h2 className="text-2xl text-cyan-300 mb-6">Дуэли 1vs1</h2>
+            
+            {/* Категории дуэлей */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl text-cyan-300">Категории дуэлей</h3>
+                <Button
+                  onClick={() => {
+                    setEditingDuelCategory(null);
+                    setDuelCategoryForm({ name: '', description: '', icon: '', color: '#00ffff' });
+                    setIsDuelCategoryModalOpen(true);
+                  }}
+                  className="bg-cyan-400 text-black hover:bg-cyan-300"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Создать категорию
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {duelCategories.map((category) => (
+                  <div key={category.id} className="p-4 border-2 border-cyan-400/30 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-cyan-200 font-semibold">{category.name}</h4>
+                        <p className="text-cyan-200/70 text-sm">{category.description || 'Без описания'}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => {
+                            setEditingDuelCategory(category);
+                            setDuelCategoryForm({
+                              name: category.name,
+                              description: category.description || '',
+                              icon: category.icon || '',
+                              color: category.color || '#00ffff',
+                            });
+                            setIsDuelCategoryModalOpen(true);
+                          }}
+                          className="bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/50"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteDuelCategory(category.id)}
+                          className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {duelCategories.length === 0 && (
+                  <p className="text-cyan-200/50 text-center py-8 col-span-full">Нет категорий дуэлей</p>
+                )}
+              </div>
+            </div>
+
+            {/* Задания дуэлей */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl text-cyan-300">Задания дуэлей</h3>
+                <Button
+                  onClick={() => {
+                    setEditingDuelTask(null);
+                    setDuelTaskForm({
+                      name: '', description: '', task: '', taskFile: null, useTaskFile: false,
+                      flag: '', duelCategoryId: null, difficulty: 'medium',
+                      hint: '', isActive: true,
+                    });
+                    setIsDuelTaskModalOpen(true);
+                  }}
+                  className="bg-cyan-400 text-black hover:bg-cyan-300"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Создать задание
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {duelTasks.map((task) => (
+                  <div key={task.id} className="p-4 border-2 border-cyan-400/30 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-cyan-200 font-semibold">{task.name}</h4>
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        task.is_active ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'
+                      }`}>
+                        {task.is_active ? 'Активно' : 'Неактивно'}
+                      </span>
+                    </div>
+                    <p className="text-cyan-200/70 text-sm mb-2">{task.description || 'Без описания'}</p>
+                    <div className="space-y-1 mb-3 text-xs text-cyan-200/60">
+                      <div>Сложность: {task.difficulty === 'easy' ? 'Легкая' : task.difficulty === 'hard' ? 'Сложная' : 'Средняя'}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          setEditingDuelTask(task);
+                          setDuelTaskForm({
+                            name: task.name,
+                            description: task.description || '',
+                            task: task.task || '',
+                            taskFile: null,
+                            useTaskFile: !!task.task_file_path,
+                            flag: task.flag,
+                            duelCategoryId: task.duel_category_id || null,
+                            difficulty: task.difficulty || 'medium',
+                            hint: task.hint || '',
+                            isActive: task.is_active !== false,
+                          });
+                          setIsDuelTaskModalOpen(true);
+                        }}
+                        className="bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-300 border border-cyan-400/50 flex-1"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteDuelTask(task.id)}
+                        className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-400/50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {duelTasks.length === 0 && (
+                  <p className="text-cyan-200/50 text-center py-8 col-span-full">Нет заданий дуэлей</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1783,6 +2089,212 @@ const AdminPage = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Модальное окно категории дуэлей */}
+        {isDuelCategoryModalOpen && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-2xl w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl text-cyan-300">
+                  {editingDuelCategory ? 'Редактировать категорию дуэлей' : 'Создать категорию дуэлей'}
+                </h3>
+                <Button
+                  onClick={() => {
+                    setIsDuelCategoryModalOpen(false);
+                    setEditingDuelCategory(null);
+                    setDuelCategoryForm({ name: '', description: '', icon: '', color: '#00ffff' });
+                  }}
+                  className="bg-transparent hover:bg-red-500/20 text-red-400"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <form onSubmit={handleDuelCategorySubmit} className="space-y-4">
+                <div>
+                  <Label className="text-cyan-200">Название</Label>
+                  <Input
+                    value={duelCategoryForm.name}
+                    onChange={(e) => setDuelCategoryForm({ ...duelCategoryForm, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Описание</Label>
+                  <Textarea
+                    value={duelCategoryForm.description}
+                    onChange={(e) => setDuelCategoryForm({ ...duelCategoryForm, description: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Иконка (эмодзи или текст)</Label>
+                  <Input
+                    value={duelCategoryForm.icon}
+                    onChange={(e) => setDuelCategoryForm({ ...duelCategoryForm, icon: e.target.value })}
+                    placeholder="🔐"
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Цвет (hex)</Label>
+                  <Input
+                    type="color"
+                    value={duelCategoryForm.color}
+                    onChange={(e) => setDuelCategoryForm({ ...duelCategoryForm, color: e.target.value })}
+                  />
+                </div>
+                <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
+                  {editingDuelCategory ? 'Сохранить' : 'Создать'}
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Модальное окно задания дуэли */}
+        {isDuelTaskModalOpen && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <div className="bg-[#0a0a0f] border-2 border-cyan-400 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl text-cyan-300">
+                  {editingDuelTask ? 'Редактировать задание дуэли' : 'Создать задание дуэли'}
+                </h3>
+                <Button
+                  onClick={() => {
+                    setIsDuelTaskModalOpen(false);
+                    setEditingDuelTask(null);
+                    setDuelTaskForm({
+                      name: '', description: '', task: '', taskFile: null, useTaskFile: false,
+                      flag: '', duelCategoryId: null, difficulty: 'medium',
+                      hint: '', isActive: true,
+                    });
+                  }}
+                  className="bg-transparent hover:bg-red-500/20 text-red-400"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <form onSubmit={handleDuelTaskSubmit} className="space-y-4">
+                <div>
+                  <Label className="text-cyan-200">Название</Label>
+                  <Input
+                    value={duelTaskForm.name}
+                    onChange={(e) => setDuelTaskForm({ ...duelTaskForm, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Описание</Label>
+                  <Textarea
+                    value={duelTaskForm.description}
+                    onChange={(e) => setDuelTaskForm({ ...duelTaskForm, description: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Категория дуэлей (опционально)</Label>
+                  <select
+                    value={duelTaskForm.duelCategoryId || ''}
+                    onChange={(e) => setDuelTaskForm({ ...duelTaskForm, duelCategoryId: e.target.value || null })}
+                    className="w-full border border-cyan-400/60 bg-[#0a0a0f] text-cyan-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400/70"
+                  >
+                    <option value="">Без категории</option>
+                    {duelCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-cyan-200 mb-2 block">Задание</Label>
+                  <div className="mb-3">
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        type="checkbox"
+                        id="duelUseTaskFile"
+                        checked={duelTaskForm.useTaskFile || false}
+                        onChange={(e) => {
+                          const useFile = e.target.checked;
+                          if (useFile && duelTaskForm.task && !duelTaskForm.taskFile) {
+                            const blob = new Blob([duelTaskForm.task], { type: 'text/plain' });
+                            const file = new File([blob], `task-${Date.now()}.txt`, { type: 'text/plain' });
+                            setDuelTaskForm({ ...duelTaskForm, useTaskFile: true, taskFile: file });
+                          } else {
+                            setDuelTaskForm({ ...duelTaskForm, useTaskFile: useFile, task: useFile ? '' : duelTaskForm.task });
+                          }
+                        }}
+                        className="w-5 h-5 rounded border-2 border-cyan-400/60 bg-[#0a0a0f] text-cyan-400 focus:ring-2 focus:ring-cyan-400/70 cursor-pointer"
+                      />
+                      <Label htmlFor="duelUseTaskFile" className="text-cyan-200 cursor-pointer select-none">
+                        Загрузить txt файл вместо текста
+                      </Label>
+                    </div>
+                  </div>
+                  {duelTaskForm.useTaskFile ? (
+                    <Input
+                      type="file"
+                      accept=".txt"
+                      onChange={(e) => setDuelTaskForm({ ...duelTaskForm, taskFile: e.target.files[0] || null })}
+                      className="block flex-1 text-sm text-cyan-200 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-cyan-400 file:text-black hover:file:bg-cyan-300 cursor-pointer"
+                    />
+                  ) : (
+                    <Textarea
+                      value={duelTaskForm.task}
+                      onChange={(e) => setDuelTaskForm({ ...duelTaskForm, task: e.target.value })}
+                      rows={6}
+                      placeholder="Введите текст задания..."
+                    />
+                  )}
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Флаг</Label>
+                  <Input
+                    value={duelTaskForm.flag}
+                    onChange={(e) => setDuelTaskForm({ ...duelTaskForm, flag: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Сложность</Label>
+                  <select
+                    value={duelTaskForm.difficulty}
+                    onChange={(e) => setDuelTaskForm({ ...duelTaskForm, difficulty: e.target.value })}
+                    className="w-full border border-cyan-400/60 bg-[#0a0a0f] text-cyan-100 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-400/70"
+                  >
+                    <option value="easy">Легкая</option>
+                    <option value="medium">Средняя</option>
+                    <option value="hard">Сложная</option>
+                    <option value="expert">Эксперт</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-cyan-200">Подсказка (опционально)</Label>
+                  <Textarea
+                    value={duelTaskForm.hint}
+                    onChange={(e) => setDuelTaskForm({ ...duelTaskForm, hint: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="duelTaskIsActive"
+                      checked={duelTaskForm.isActive}
+                      onChange={(e) => setDuelTaskForm({ ...duelTaskForm, isActive: e.target.checked })}
+                      className="w-5 h-5 rounded border-2 border-cyan-400/60 bg-[#0a0a0f] text-cyan-400 focus:ring-2 focus:ring-cyan-400/70 cursor-pointer"
+                    />
+                    <Label htmlFor="duelTaskIsActive" className="text-cyan-200 cursor-pointer select-none">
+                      Активно (доступно для дуэлей)
+                    </Label>
+                  </div>
+                </div>
+                <Button type="submit" className="w-full bg-cyan-400 text-black hover:bg-cyan-300">
+                  {editingDuelTask ? 'Сохранить изменения' : 'Создать'}
+                </Button>
+              </form>
             </div>
           </div>
         )}

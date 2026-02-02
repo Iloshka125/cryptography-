@@ -2,23 +2,21 @@ const pool = require('../config/database');
 
 class DuelTask {
   // Создать задание для дуэли
-  static async create({ categoryId, levelId, name, description, task, taskFilePath, flag, difficulty, timeLimit, points, hint }) {
+  static async create({ duelCategoryId, name, description, task, taskFilePath, flag, difficulty, hint }) {
     const query = `
-      INSERT INTO duel_tasks (category_id, level_id, name, description, task, task_file_path, flag, difficulty, time_limit, points, hint)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      INSERT INTO duel_tasks (duel_category_id, name, description, task, task_file_path, flag, difficulty, hint)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *;
     `;
+    // Убеждаемся, что null передается как NULL, а не как строка "null"
     const values = [
-      categoryId || null,
-      levelId || null,
+      (duelCategoryId && duelCategoryId !== 'null' && duelCategoryId !== '') ? parseInt(duelCategoryId) : null,
       name,
       description || null,
       task || null,
       taskFilePath || null,
       flag,
       difficulty || 'medium',
-      timeLimit || 300,
-      points || 100,
       hint || null,
     ];
     const res = await pool.query(query, values);
@@ -31,9 +29,9 @@ class DuelTask {
     const values = [];
     let paramIndex = 1;
 
-    if (filters.categoryId) {
-      query += ` AND category_id = $${paramIndex++}`;
-      values.push(filters.categoryId);
+    if (filters.duelCategoryId) {
+      query += ` AND duel_category_id = $${paramIndex++}`;
+      values.push(filters.duelCategoryId);
     }
 
     if (filters.difficulty) {
@@ -64,9 +62,9 @@ class DuelTask {
     const values = [];
     let paramIndex = 1;
 
-    if (filters.categoryId) {
-      query += ` AND (category_id = $${paramIndex++} OR category_id IS NULL)`;
-      values.push(filters.categoryId);
+    if (filters.duelCategoryId) {
+      query += ` AND (duel_category_id = $${paramIndex++} OR duel_category_id IS NULL)`;
+      values.push(filters.duelCategoryId);
     }
 
     if (filters.difficulty) {

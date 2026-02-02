@@ -40,6 +40,8 @@ const addHashToLevels = require('./migrations/addHashToLevels');
 const createCompetitionLevelsTable = require('./migrations/createCompetitionLevelsTable');
 const addPrizeAwardedToCompetitions = require('./migrations/addPrizeAwardedToCompetitions');
 const createDuelsTables = require('./migrations/createDuelsTables');
+const createDuelCategoriesTable = require('./migrations/createDuelCategoriesTable');
+const addExpiresAtToDuelChallenges = require('./migrations/addExpiresAtToDuelChallenges');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -101,6 +103,8 @@ app.use((req, res, next) => {
     await createCompetitionLevelsTable();
     await addPrizeAwardedToCompetitions();
     await createDuelsTables();
+    await createDuelCategoriesTable();
+    await addExpiresAtToDuelChallenges();
   } catch (err) {
     console.error('Ошибка выполнения миграций:', err);
     process.exit(1);
