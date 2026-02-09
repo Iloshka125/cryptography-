@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthCard from '../components/AuthCard.jsx';
 import FormInput from '../components/FormInput.jsx';
 import SubmitButton from '../components/SubmitButton.jsx';
-import CryptoQuiz from '../components/CryptoQuiz.jsx';
 import useForm from '../hooks/useForm.js';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -74,8 +73,6 @@ const RegisterPage = () => {
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [userData, setUserData] = useState(null);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -91,28 +88,23 @@ const RegisterPage = () => {
       return;
     }
 
-    // Сохраняем данные пользователя и показываем квиз
-    const data = {
-      nickname: values.nickname,
-      password: values.password,
-    };
-    
-    if (values.email) {
-      data.email = values.email;
-    }
-    if (values.phone) {
-      // Нормализуем номер телефона для БД (формат +7XXXXXXXXXX)
-      data.phone = normalizePhoneForDB(values.phone);
-    }
-    
-    setUserData(data);
-    setShowQuiz(true);
-  };
-
-  const handleQuizComplete = async (data) => {
     setLoading(true);
     
     try {
+      // Подготавливаем данные для регистрации
+      const data = {
+        nickname: values.nickname,
+        password: values.password,
+      };
+      
+      if (values.email) {
+        data.email = values.email;
+      }
+      if (values.phone) {
+        // Нормализуем номер телефона для БД (формат +7XXXXXXXXXX)
+        data.phone = normalizePhoneForDB(values.phone);
+      }
+      
       const response = await register(data);
       // Устанавливаем авторизацию с данными пользователя
       const userData = response.user || response;
@@ -140,13 +132,7 @@ const RegisterPage = () => {
       );
       console.error('Registration error:', error);
       setLoading(false);
-      throw error;
     }
-  };
-
-  const handleQuizBack = () => {
-    setShowQuiz(false);
-    setUserData(null);
   };
 
   const handlePhoneChange = (event) => {
@@ -158,21 +144,6 @@ const RegisterPage = () => {
       }
     });
   };
-
-  // Если показываем квиз, рендерим его
-  if (showQuiz && userData) {
-    return (
-      <div className="page-fade-in min-h-screen flex items-center justify-center p-4">
-        <div>
-          <CryptoQuiz
-            userData={userData}
-            onComplete={handleQuizComplete}
-            onBack={handleQuizBack}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="page-fade-in min-h-screen flex items-center justify-center p-4">
