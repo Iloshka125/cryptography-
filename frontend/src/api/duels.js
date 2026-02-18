@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'http://5.35.92.24:3000';
 
 /**
  * Выполняет API запрос
@@ -230,7 +230,7 @@ export async function createDuelTask(taskData, userId) {
   
   formData.append('user_id', userId);
   
-  const API_BASE_URL = 'http://localhost:3000';
+  const API_BASE_URL = 'http://5.35.92.24:3000';
   const response = await fetch(`${API_BASE_URL}/duels/tasks?user_id=${userId}`, {
     method: 'POST',
     body: formData,
@@ -264,7 +264,7 @@ export async function updateDuelTask(taskId, taskData, userId) {
   
   formData.append('user_id', userId);
   
-  const API_BASE_URL = 'http://localhost:3000';
+  const API_BASE_URL = 'http://5.35.92.24:3000';
   const response = await fetch(`${API_BASE_URL}/duels/tasks/${taskId}?user_id=${userId}`, {
     method: 'PUT',
     body: formData,

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'http://5.35.92.24:3000';
 
 /**
  * Выполняет API запрос

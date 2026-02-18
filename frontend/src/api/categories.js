@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'http://5.35.92.24:3000';
 
 /**
  * Выполняет API запрос
@@ -116,7 +116,7 @@ export async function createLevel(categoryId, levelData) {
     }
   });
   
-  const API_BASE_URL = 'http://localhost:3000';
+  const API_BASE_URL = 'http://5.35.92.24:3000';
   const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/levels`, {
     method: 'POST',
     body: formData,
@@ -147,7 +147,7 @@ export async function updateLevel(levelId, levelData) {
     }
   });
   
-  const API_BASE_URL = 'http://localhost:3000';
+  const API_BASE_URL = 'http://5.35.92.24:3000';
   const response = await fetch(`${API_BASE_URL}/categories/levels/${levelId}`, {
     method: 'PUT',
     body: formData,
