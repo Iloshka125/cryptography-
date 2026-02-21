@@ -49,7 +49,7 @@ class User {
       UPDATE users
       SET email_verified = true, email_verification_token = NULL, email_verification_expires_at = NULL
       WHERE id = $1
-      RETURNING id, nickname, email, phone
+      RETURNING id, nickname, email, phone, is_admin
     `;
     const res = await pool.query(updateQuery, [user.id]);
     return { success: true, user: res.rows[0] };

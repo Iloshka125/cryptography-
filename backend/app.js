@@ -1,4 +1,5 @@
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const authRoutes = require('./routes/auth');
 const balanceRoutes = require('./routes/balance');
@@ -43,12 +44,14 @@ const createDuelsTables = require('./migrations/createDuelsTables');
 const createDuelCategoriesTable = require('./migrations/createDuelCategoriesTable');
 const addExpiresAtToDuelChallenges = require('./migrations/addExpiresAtToDuelChallenges');
 const addEmailVerificationFields = require('./migrations/addEmailVerificationFields');
+const createSessionsTable = require('./migrations/createSessionsTable');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 // Статические файлы для скачивания
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -61,7 +64,7 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Vary', 'Origin');
   }
-
+  res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
@@ -107,6 +110,7 @@ app.use((req, res, next) => {
     await createDuelCategoriesTable();
     await addExpiresAtToDuelChallenges();
     await addEmailVerificationFields();
+    await createSessionsTable();
   } catch (err) {
     console.error('Ошибка выполнения миграций:', err);
     process.exit(1);

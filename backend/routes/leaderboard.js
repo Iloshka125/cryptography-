@@ -1,16 +1,16 @@
 const express = require('express');
 const Leaderboard = require('../models/Leaderboard');
+const optionalSession = require('../middleware/requireSession').optionalSession;
 const router = express.Router();
 
-// Получить лидерборд
-router.get('/', async (req, res) => {
+// Получить лидерборд (позиция пользователя по сессии)
+router.get('/', optionalSession, async (req, res) => {
   try {
-    const userId = req.query.user_id || req.query.userId;
+    const userId = req.userId;
     const limit = parseInt(req.query.limit) || 100;
-    
+
     if (userId) {
-      // Если передан user_id, возвращаем лидерборд с позицией пользователя
-      const result = await Leaderboard.getLeaderboardWithUser(parseInt(userId), limit);
+      const result = await Leaderboard.getLeaderboardWithUser(userId, limit);
       const leaderboardWithRanks = result.topUsers.map((user, index) => ({
         ...user,
         rank: index + 1,

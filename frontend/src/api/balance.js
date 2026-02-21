@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://5.35.92.24:3000';
+import { API_BASE_URL } from './config.js';
 
 /**
  * Выполняет API запрос
@@ -10,6 +10,7 @@ async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
   const config = {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -41,113 +42,85 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 /**
- * Получить баланс пользователя
- * @param {object} params - Параметры для идентификации пользователя
- * @param {number} [params.user_id] - ID пользователя
- * @param {string} [params.email] - Email пользователя
- * @param {string} [params.phone] - Телефон пользователя
+ * Получить баланс текущего пользователя (по сессии/cookie)
  * @returns {Promise<object>} - Баланс пользователя
  */
-export async function getBalance(params) {
+export async function getBalance() {
   return apiRequest('/balance/get', {
     method: 'POST',
-    body: params,
+    body: {},
   });
 }
 
 /**
- * Обновить баланс монет
+ * Обновить баланс монет (для текущей сессии)
  * @param {object} params - Параметры
  * @param {number} params.coins - Новое количество монет
- * @param {number} [params.user_id] - ID пользователя
- * @param {string} [params.email] - Email пользователя
- * @param {string} [params.phone] - Телефон пользователя
- * @returns {Promise<object>} - Обновленный баланс
  */
 export async function updateCoins(params) {
   return apiRequest('/balance/update-coins', {
     method: 'POST',
-    body: params,
+    body: { coins: params.coins },
   });
 }
 
 /**
- * Обновить баланс подсказок
+ * Обновить баланс подсказок (для текущей сессии)
  * @param {object} params - Параметры
  * @param {number} params.hints - Новое количество подсказок
- * @param {number} [params.user_id] - ID пользователя
- * @param {string} [params.email] - Email пользователя
- * @param {string} [params.phone] - Телефон пользователя
- * @returns {Promise<object>} - Обновленный баланс
  */
 export async function updateHints(params) {
   return apiRequest('/balance/update-hints', {
     method: 'POST',
-    body: params,
+    body: { hints: params.hints },
   });
 }
 
 /**
- * Добавить монеты
+ * Добавить монеты (для текущей сессии)
  * @param {object} params - Параметры
  * @param {number} params.amount - Количество монет для добавления
- * @param {number} [params.user_id] - ID пользователя
- * @param {string} [params.email] - Email пользователя
- * @param {string} [params.phone] - Телефон пользователя
- * @returns {Promise<object>} - Обновленный баланс
  */
 export async function addCoins(params) {
   return apiRequest('/balance/add-coins', {
     method: 'POST',
-    body: params,
+    body: { amount: params.amount },
   });
 }
 
 /**
- * Вычесть монеты
+ * Вычесть монеты (для текущей сессии)
  * @param {object} params - Параметры
  * @param {number} params.amount - Количество монет для вычитания
- * @param {number} [params.user_id] - ID пользователя
- * @param {string} [params.email] - Email пользователя
- * @param {string} [params.phone] - Телефон пользователя
- * @returns {Promise<object>} - Обновленный баланс
  */
 export async function subtractCoins(params) {
   return apiRequest('/balance/subtract-coins', {
     method: 'POST',
-    body: params,
+    body: { amount: params.amount },
   });
 }
 
 /**
- * Добавить подсказки
+ * Добавить подсказки (для текущей сессии)
  * @param {object} params - Параметры
  * @param {number} params.amount - Количество подсказок для добавления
- * @param {number} [params.user_id] - ID пользователя
- * @param {string} [params.email] - Email пользователя
- * @param {string} [params.phone] - Телефон пользователя
- * @returns {Promise<object>} - Обновленный баланс
  */
 export async function addHints(params) {
   return apiRequest('/balance/add-hints', {
     method: 'POST',
-    body: params,
+    body: { amount: params.amount },
   });
 }
 
 /**
- * Вычесть подсказки
+ * Вычесть подсказки (для текущей сессии)
  * @param {object} params - Параметры
  * @param {number} params.amount - Количество подсказок для вычитания
- * @param {number} [params.user_id] - ID пользователя
- * @param {string} [params.email] - Email пользователя
- * @param {string} [params.phone] - Телефон пользователя
- * @returns {Promise<object>} - Обновленный баланс
  */
 export async function subtractHints(params) {
   return apiRequest('/balance/subtract-hints', {
     method: 'POST',
-    body: params,
+    body: { amount: params.amount },
   });
 }
 

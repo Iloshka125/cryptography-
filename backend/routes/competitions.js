@@ -3,15 +3,15 @@ const Competition = require('../models/Competition');
 const CompetitionLevel = require('../models/CompetitionLevel');
 const User = require('../models/User');
 const Balance = require('../models/Balance');
+const requireSession = require('../middleware/requireSession');
+const optionalSession = require('../middleware/requireSession').optionalSession;
 const router = express.Router();
 
-// Получить все соревнования
-router.get('/', async (req, res) => {
+// Получить все соревнования (участие по сессии)
+router.get('/', optionalSession, async (req, res) => {
   try {
-    const userId = req.query.user_id;
+    const userId = req.userId;
     const competitions = await Competition.findAll();
-    
-    // Если передан user_id, добавляем информацию об участии
     // Также проверяем завершенные соревнования и начисляем призы
     const competitionsWithParticipation = await Promise.all(
       competitions.map(async (comp) => {
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
         
         let isParticipating = false;
         if (userId) {
-          isParticipating = await Competition.isUserParticipating(parseInt(userId), comp.id);
+          isParticipating = await Competition.isUserParticipating(userId, comp.id);
         }
         
         // Для завершенных соревнований получаем победителя (первое место)
@@ -60,28 +60,27 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Получить соревнование по hash (или ID для обратной совместимости)
-router.get('/:hash', async (req, res) => {
+// Получить соревнование по hash (участие по сессии)
+router.get('/:hash', optionalSession, async (req, res) => {
   try {
     const { hash } = req.params;
-    const userId = req.query.user_id;
-    // Пробуем найти по hash, если не найдено - пробуем по ID (для обратной совместимости)
+    const userId = req.userId;
     let competition = await Competition.findByHash(hash);
     if (!competition && !isNaN(parseInt(hash))) {
       competition = await Competition.findById(parseInt(hash));
     }
-    
+
     if (!competition) {
       return res.status(404).json({ error: 'Соревнование не найдено' });
     }
-    
+
     let isParticipating = false;
     let userProgress = null;
     if (userId) {
-      isParticipating = await Competition.isUserParticipating(parseInt(userId), competition.id);
+      isParticipating = await Competition.isUserParticipating(userId, competition.id);
       if (isParticipating) {
         const participants = await Competition.getParticipants(competition.id);
-        const userParticipant = participants.find(p => p.user_id === parseInt(userId));
+        const userParticipant = participants.find(p => p.user_id === userId);
         if (userParticipant) {
           userProgress = {
             experienceGained: userParticipant.experience_gained || 0,
@@ -111,7 +110,7 @@ router.get('/:hash', async (req, res) => {
     // Если пользователь участвует, получаем его прогресс
     let userLevelProgress = [];
     if (userId && isParticipating && competition.status !== 'upcoming') {
-      userLevelProgress = await CompetitionLevel.getUserProgress(parseInt(userId), competition.id);
+      userLevelProgress = await CompetitionLevel.getUserProgress(userId, competition.id);
     }
     
     res.json({
@@ -249,17 +248,12 @@ router.delete('/:hash', async (req, res) => {
   }
 });
 
-// Присоединиться к соревнованию
-router.post('/:hash/join', async (req, res) => {
+// Присоединиться к соревнованию (текущая сессия)
+router.post('/:hash/join', requireSession, async (req, res) => {
   try {
     const { hash } = req.params;
-    const { user_id } = req.body;
-    
-    if (!user_id) {
-      return res.status(400).json({ error: 'Требуется user_id' });
-    }
-    
-    // Пробуем найти по hash, если не найдено - пробуем по ID (для обратной совместимости)
+    const userId = req.userId;
+
     let competition = await Competition.findByHash(hash);
     if (!competition && !isNaN(parseInt(hash))) {
       competition = await Competition.findById(parseInt(hash));
@@ -267,47 +261,37 @@ router.post('/:hash/join', async (req, res) => {
     if (!competition) {
       return res.status(404).json({ error: 'Соревнование не найдено' });
     }
-    
-    // Проверяем статус соревнования
+
     if (competition.status !== 'active' && competition.status !== 'upcoming') {
       return res.status(400).json({ error: 'Соревнование не доступно для участия' });
     }
-    
-    // Проверяем, не участвует ли уже пользователь
-    const isParticipating = await Competition.isUserParticipating(parseInt(user_id), competition.id);
+
+    const isParticipating = await Competition.isUserParticipating(userId, competition.id);
     if (isParticipating) {
       return res.status(400).json({ error: 'Вы уже участвуете в этом соревновании' });
     }
-    
-    // Проверяем максимальное количество участников
+
     if (competition.max_participants && competition.participants_count >= competition.max_participants) {
       return res.status(400).json({ error: 'Достигнуто максимальное количество участников' });
     }
-    
-    // Проверяем и списываем плату за вход
+
     if (competition.entry_fee > 0) {
-      const userBalance = await Balance.findByUserId(parseInt(user_id));
+      const userBalance = await Balance.findByUserId(userId);
       if (!userBalance || (userBalance.coins || 0) < competition.entry_fee) {
         return res.status(400).json({ error: 'Недостаточно монет для участия' });
       }
-      await Balance.subtractCoins(parseInt(user_id), competition.entry_fee);
+      await Balance.subtractCoins(userId, competition.entry_fee);
     }
-    
-    // Получаем текущие данные пользователя
-    const user = await User.findById(parseInt(user_id));
+
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
-    
-    // В соревнованиях всегда начинаем с 0 опыта
+
     const initialExperience = 0;
     const initialLevel = 1;
-    
-    // Присоединяем пользователя
-    await Competition.joinCompetition(parseInt(user_id), competition.id, initialExperience, initialLevel);
-    
-    // Получаем обновленный баланс
-    const newBalance = await Balance.findByUserId(parseInt(user_id));
+    await Competition.joinCompetition(userId, competition.id, initialExperience, initialLevel);
+    const newBalance = await Balance.findByUserId(userId);
     
     res.json({
       success: true,

@@ -4,29 +4,29 @@ const UserBattlePass = require('../models/UserBattlePass');
 const Balance = require('../models/Balance');
 const LevelExperienceRequirements = require('../models/LevelExperienceRequirements');
 const User = require('../models/User');
+const optionalSession = require('../middleware/requireSession').optionalSession;
+const requireSession = require('../middleware/requireSession');
 const router = express.Router();
 
-// Получить все награды Battle Pass с информацией о полученных наградах пользователя
-router.get('/', async (req, res) => {
+// Получить все награды Battle Pass (прогресс по сессии)
+router.get('/', optionalSession, async (req, res) => {
   try {
-    const userId = req.query.user_id || req.query.userId;
+    const userId = req.userId;
     const rewards = await BattlePass.findAll();
-    
-    // Получаем требования опыта для уровней
+
     const levelRequirements = await LevelExperienceRequirements.getAll();
     const requirementsMap = {};
-    levelRequirements.forEach(req => {
-      requirementsMap[req.level_number] = req.experience_required;
+    levelRequirements.forEach(r => {
+      requirementsMap[r.level_number] = r.experience_required;
     });
-    
+
     let claimedRewardIds = [];
     let userExperience = 0;
     let userLevel = 1;
-    
+
     if (userId) {
-      claimedRewardIds = await UserBattlePass.getClaimedRewards(parseInt(userId));
-      // Получаем опыт пользователя
-      const user = await User.findById(parseInt(userId));
+      claimedRewardIds = await UserBattlePass.getClaimedRewards(userId);
+      const user = await User.findById(userId);
       if (user) {
         userExperience = user.experience || 0;
         userLevel = user.level || 1;
@@ -71,43 +71,32 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Получить награду (claim reward)
-router.post('/:id/claim', async (req, res) => {
+// Получить награду (текущая сессия)
+router.post('/:id/claim', requireSession, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.body.user_id || req.body.userId;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'Требуется user_id' });
-    }
-    
-    // Проверяем существование награды
+    const userId = req.userId;
+
     const reward = await BattlePass.findById(id);
     if (!reward) {
       return res.status(404).json({ error: 'Награда не найдена' });
     }
-    
-    // Проверяем, не получена ли уже награда
-    const isClaimed = await UserBattlePass.isRewardClaimed(parseInt(userId), parseInt(id));
+
+    const isClaimed = await UserBattlePass.isRewardClaimed(userId, parseInt(id));
     if (isClaimed) {
       return res.status(400).json({ error: 'Награда уже получена' });
     }
-    
-    // Отмечаем награду как полученную
-    await UserBattlePass.claimReward(parseInt(userId), parseInt(id));
-    
-    // Парсим награду и извлекаем монеты
+
+    await UserBattlePass.claimReward(userId, parseInt(id));
+
     const rewardText = reward.reward || '';
     const coinMatch = rewardText.match(/(\d+)\s*монет/i);
     let coinsToAdd = 0;
-    
     if (coinMatch) {
       coinsToAdd = parseInt(coinMatch[1]);
     }
-    
-    // Зачисляем монеты на баланс, если они есть
     if (coinsToAdd > 0) {
-      await Balance.addCoins(parseInt(userId), coinsToAdd);
+      await Balance.addCoins(userId, coinsToAdd);
     }
     
     res.json({

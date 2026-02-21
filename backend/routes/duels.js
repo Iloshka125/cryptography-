@@ -21,15 +21,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Middleware для проверки авторизации
-const requireAuth = (req, res, next) => {
-  const userId = req.query.user_id || req.body.user_id;
-  if (!userId) {
-    return res.status(401).json({ error: 'Требуется авторизация' });
-  }
-  req.userId = parseInt(userId);
-  next();
-};
+const requireSession = require('../middleware/requireSession');
 
 // Middleware для проверки админа
 const requireAdmin = async (req, res, next) => {
@@ -88,7 +80,7 @@ router.use(async (req, res, next) => {
 // ========== КАТЕГОРИИ ДУЭЛЕЙ (админ) ==========
 
 // Получить все категории
-router.get('/categories', requireAuth, requireAdmin, async (req, res) => {
+router.get('/categories', requireSession, requireAdmin, async (req, res) => {
   try {
     const categories = await DuelCategory.findAll();
     res.json({ success: true, categories });
@@ -99,7 +91,7 @@ router.get('/categories', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // Создать категорию
-router.post('/categories', requireAuth, requireAdmin, async (req, res) => {
+router.post('/categories', requireSession, requireAdmin, async (req, res) => {
   try {
     const { name, description, icon, color } = req.body;
     
@@ -125,7 +117,7 @@ router.post('/categories', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // Обновить категорию
-router.put('/categories/:id', requireAuth, requireAdmin, async (req, res) => {
+router.put('/categories/:id', requireSession, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, icon, color } = req.body;
@@ -149,7 +141,7 @@ router.put('/categories/:id', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // Удалить категорию
-router.delete('/categories/:id', requireAuth, requireAdmin, async (req, res) => {
+router.delete('/categories/:id', requireSession, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const deleted = await DuelCategory.delete(parseInt(id));
@@ -164,7 +156,7 @@ router.delete('/categories/:id', requireAuth, requireAdmin, async (req, res) => 
 });
 
 // Получить категории для пользователей (без админ прав)
-router.get('/categories/public', requireAuth, async (req, res) => {
+router.get('/categories/public', requireSession, async (req, res) => {
   try {
     const categories = await DuelCategory.findAll();
     res.json({ success: true, categories });
@@ -178,7 +170,7 @@ router.get('/categories/public', requireAuth, async (req, res) => {
 // ========== ЗАДАНИЯ ДУЭЛЕЙ (админ) ==========
 
 // Получить все задания
-router.get('/tasks', requireAuth, requireAdmin, async (req, res) => {
+router.get('/tasks', requireSession, requireAdmin, async (req, res) => {
   try {
     const tasks = await DuelTask.findAll();
     res.json({ success: true, tasks });
@@ -189,7 +181,7 @@ router.get('/tasks', requireAuth, requireAdmin, async (req, res) => {
 });
 
 // Создать задание
-router.post('/tasks', requireAuth, requireAdmin, upload.single('taskFile'), async (req, res) => {
+router.post('/tasks', requireSession, requireAdmin, upload.single('taskFile'), async (req, res) => {
   try {
     const { duelCategoryId, name, description, task, flag, difficulty, hint } = req.body;
     
@@ -222,7 +214,7 @@ router.post('/tasks', requireAuth, requireAdmin, upload.single('taskFile'), asyn
 });
 
 // Обновить задание
-router.put('/tasks/:id', requireAuth, requireAdmin, upload.single('taskFile'), async (req, res) => {
+router.put('/tasks/:id', requireSession, requireAdmin, upload.single('taskFile'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, task, flag, difficulty, hint, isActive } = req.body;
@@ -254,7 +246,7 @@ router.put('/tasks/:id', requireAuth, requireAdmin, upload.single('taskFile'), a
 });
 
 // Удалить задание
-router.delete('/tasks/:id', requireAuth, requireAdmin, async (req, res) => {
+router.delete('/tasks/:id', requireSession, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const deleted = await DuelTask.delete(parseInt(id));
@@ -271,7 +263,7 @@ router.delete('/tasks/:id', requireAuth, requireAdmin, async (req, res) => {
 // ========== ЗАЯВКИ НА ДУЭЛЬ ==========
 
 // Получить все заявки
-router.get('/challenges', requireAuth, async (req, res) => {
+router.get('/challenges', requireSession, async (req, res) => {
   try {
     const { status, opponentId } = req.query;
     const filters = {};
@@ -312,7 +304,7 @@ router.get('/challenges', requireAuth, async (req, res) => {
 });
 
 // Создать заявку на дуэль
-router.post('/challenges', requireAuth, async (req, res) => {
+router.post('/challenges', requireSession, async (req, res) => {
   try {
     const { opponentId, duelCategoryId, difficulty, stake } = req.body;
     
@@ -348,7 +340,7 @@ router.post('/challenges', requireAuth, async (req, res) => {
 });
 
 // Принять заявку
-router.post('/challenges/:id/accept', requireAuth, async (req, res) => {
+router.post('/challenges/:id/accept', requireSession, async (req, res) => {
   try {
     const { id } = req.params;
     const challenge = await DuelChallenge.findById(parseInt(id));
@@ -385,7 +377,7 @@ router.post('/challenges/:id/accept', requireAuth, async (req, res) => {
 });
 
 // Получить заявку по ID
-router.get('/challenges/:id', requireAuth, async (req, res) => {
+router.get('/challenges/:id', requireSession, async (req, res) => {
   try {
     const { id } = req.params;
     const challenge = await DuelChallenge.findById(parseInt(id));
@@ -425,7 +417,7 @@ router.get('/challenges/:id', requireAuth, async (req, res) => {
 });
 
 // Отправить ответ
-router.post('/challenges/:id/submit', requireAuth, async (req, res) => {
+router.post('/challenges/:id/submit', requireSession, async (req, res) => {
   try {
     const { id } = req.params;
     const { flag } = req.body;
@@ -447,7 +439,7 @@ router.post('/challenges/:id/submit', requireAuth, async (req, res) => {
 });
 
 // Отменить заявку
-router.post('/challenges/:id/cancel', requireAuth, async (req, res) => {
+router.post('/challenges/:id/cancel', requireSession, async (req, res) => {
   try {
     const { id } = req.params;
     const challenge = await DuelChallenge.findById(parseInt(id));

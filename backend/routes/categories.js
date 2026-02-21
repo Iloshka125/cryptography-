@@ -10,20 +10,21 @@ const User = require('../models/User');
 const Balance = require('../models/Balance');
 const Competition = require('../models/Competition');
 const upload = require('../config/upload');
+const requireSession = require('../middleware/requireSession');
+const optionalSession = require('../middleware/requireSession').optionalSession;
 const router = express.Router();
 
-// Получить все категории с уровнями
-router.get('/', async (req, res) => {
+// Получить все категории с уровнями (user progress — по сессии, если есть)
+router.get('/', optionalSession, async (req, res) => {
   try {
-    const userId = req.query.user_id || req.query.userId;
+    const userId = req.userId;
     const categories = await Category.findAll();
-    
-    // Если передан user_id, добавляем информацию о пройденных и купленных уровнях
+
     let completedLevelIds = [];
     let purchasedLevelIds = [];
     if (userId) {
-      completedLevelIds = await UserLevelProgress.getCompletedLevels(parseInt(userId));
-      purchasedLevelIds = await UserPurchasedLevels.getPurchasedLevels(parseInt(userId));
+      completedLevelIds = await UserLevelProgress.getCompletedLevels(userId);
+      purchasedLevelIds = await UserPurchasedLevels.getPurchasedLevels(userId);
     }
     
     // Добавляем информацию о пройденных уровнях и доступе (купленных/бесплатных)
@@ -46,31 +47,27 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Получить уровень по hash (или ID для обратной совместимости) (без флага для безопасности)
-// ВАЖНО: этот маршрут должен быть перед /:id, иначе Express перехватит запрос как категорию
-router.get('/levels/:hash', async (req, res) => {
+// Получить уровень по hash (user progress по сессии)
+router.get('/levels/:hash', optionalSession, async (req, res) => {
   try {
     const { hash } = req.params;
-    const userId = req.query.user_id || req.query.userId;
-    // Пробуем найти по hash, если не найдено - пробуем по ID (для обратной совместимости)
+    const userId = req.userId;
     let level = await Level.findByHash(hash);
     if (!level && !isNaN(parseInt(hash))) {
       level = await Level.findById(parseInt(hash));
     }
-    
+
     if (!level) {
       return res.status(404).json({ error: 'Уровень не найден' });
     }
-    
-    // Не возвращаем флаг для безопасности
+
     const { flag, ...levelWithoutFlag } = level;
-    
-    // Проверяем, пройден ли уровень пользователем и куплен ли он
+
     let completed = false;
     let purchased = false;
     if (userId) {
-      completed = await UserLevelProgress.isLevelCompleted(parseInt(userId), level.id);
-      purchased = await UserPurchasedLevels.isLevelPurchased(parseInt(userId), level.id);
+      completed = await UserLevelProgress.isLevelCompleted(userId, level.id);
+      purchased = await UserPurchasedLevels.isLevelPurchased(userId, level.id);
     }
     
     // Бесплатные уровни считаются "купленными"
@@ -107,31 +104,26 @@ router.get('/levels/:hash', async (req, res) => {
   }
 });
 
-// Проверить правильность флага уровня
-router.post('/levels/:hash/check', async (req, res) => {
+// Проверить правильность флага уровня (текущая сессия)
+router.post('/levels/:hash/check', requireSession, async (req, res) => {
   try {
     const { hash } = req.params;
-    const { flag, user_id } = req.body;
-    
+    const { flag } = req.body;
+
     if (!flag) {
       return res.status(400).json({ error: 'Требуется флаг' });
     }
 
-    if (!user_id) {
-      return res.status(400).json({ error: 'Требуется user_id' });
-    }
-    
-    // Пробуем найти по hash, если не найдено - пробуем по ID (для обратной совместимости)
     let level = await Level.findByHash(hash);
     if (!level && !isNaN(parseInt(hash))) {
       level = await Level.findById(parseInt(hash));
     }
-    
+
     if (!level) {
       return res.status(404).json({ error: 'Уровень не найден' });
     }
 
-    const userId = parseInt(user_id);
+    const userId = req.userId;
     const levelId = level.id;
 
     // Проверяем, не пройден ли уже уровень
@@ -515,17 +507,12 @@ router.delete('/levels/:id', async (req, res) => {
   }
 });
 
-// Купить уровень
-router.post('/levels/:hash/purchase', async (req, res) => {
+// Купить уровень (текущая сессия)
+router.post('/levels/:hash/purchase', requireSession, async (req, res) => {
   try {
     const { hash } = req.params;
-    const { user_id } = req.body;
-    
-    if (!user_id) {
-      return res.status(400).json({ error: 'Требуется user_id' });
-    }
-    
-    // Пробуем найти по hash, если не найдено - пробуем по ID (для обратной совместимости)
+    const userId = req.userId;
+
     let level = await Level.findByHash(hash);
     if (!level && !isNaN(parseInt(hash))) {
       level = await Level.findById(parseInt(hash));
@@ -533,39 +520,31 @@ router.post('/levels/:hash/purchase', async (req, res) => {
     if (!level) {
       return res.status(404).json({ error: 'Уровень не найден' });
     }
-    
-    // Проверяем, что уровень платный
+
     if (!level.is_paid) {
       return res.status(400).json({ error: 'Этот уровень бесплатный' });
     }
-    
-    // Проверяем, не куплен ли уже уровень
-    const isPurchased = await UserPurchasedLevels.isLevelPurchased(parseInt(user_id), level.id);
+
+    const isPurchased = await UserPurchasedLevels.isLevelPurchased(userId, level.id);
     if (isPurchased) {
       return res.status(400).json({ error: 'Уровень уже куплен' });
     }
-    
-    // Проверяем баланс пользователя
-    const user = await User.findById(parseInt(user_id));
+
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
-    
+
     const price = level.price || 0;
-    const userBalance = await Balance.findByUserId(parseInt(user_id));
-    
+    const userBalance = await Balance.findByUserId(userId);
+
     if ((userBalance?.coins || 0) < price) {
       return res.status(400).json({ error: 'Недостаточно монет' });
     }
-    
-    // Списываем монеты
-    await Balance.subtractCoins(parseInt(user_id), price);
-    
-    // Записываем покупку
-    await UserPurchasedLevels.purchaseLevel(parseInt(user_id), level.id, price);
-    
-    // Получаем обновленный баланс
-    const newBalance = await Balance.findByUserId(parseInt(user_id));
+
+    await Balance.subtractCoins(userId, price);
+    await UserPurchasedLevels.purchaseLevel(userId, level.id, price);
+    const newBalance = await Balance.findByUserId(userId);
     
     res.json({
       success: true,

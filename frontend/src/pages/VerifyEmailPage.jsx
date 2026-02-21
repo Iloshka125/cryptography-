@@ -1,29 +1,47 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import AuthCard from '../components/AuthCard.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { verifyEmail } from '../api/auth.js';
 
 const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const { showToast } = useToast();
+  const { login: authLogin } = useAuth();
+  const navigate = useNavigate();
   const [status, setStatus] = useState('loading'); // loading | success | error
   const [errorMessage, setErrorMessage] = useState('');
+  const didRun = useRef(false);
 
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      const msg = 'Ссылка недействительна — отсутствует токен';
-      setErrorMessage(msg);
-      showToast(msg, 'error');
+      setErrorMessage('Ссылка недействительна — отсутствует токен');
+      showToast('Ссылка недействительна — отсутствует токен', 'error');
       return;
     }
+    if (didRun.current) return;
+    didRun.current = true;
 
     verifyEmail(token)
-      .then(() => {
+      .then((data) => {
         setStatus('success');
-        showToast('Почта подтверждена! Теперь вы можете войти.', 'success');
+        if (data.user) {
+          authLogin({
+            user_id: data.user.user_id,
+            username: data.user.nickname,
+            email: data.user.email,
+            phone: data.user.phone,
+            isAdmin: data.user.isAdmin || false,
+            balance: data.user.balance || { coins: 0, hints: 0 },
+          });
+          showToast('Почта подтверждена. Вы вошли в аккаунт.', 'success');
+          navigate('/enigma', { replace: true });
+        } else {
+          showToast('Почта подтверждена! Теперь вы можете войти.', 'success');
+        }
       })
       .catch((err) => {
         setStatus('error');
@@ -31,7 +49,7 @@ const VerifyEmailPage = () => {
         setErrorMessage(msg);
         showToast(msg, 'error');
       });
-  }, [token, showToast]);
+  }, [token, showToast, authLogin, navigate]);
 
   return (
     <div className="page-fade-in auth-page-wrap">

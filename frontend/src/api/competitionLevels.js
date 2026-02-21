@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://5.35.92.24:3000';
+import { API_BASE_URL } from './config.js';
 
 /**
  * Выполняет API запрос
@@ -7,6 +7,7 @@ async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
   const config = {
+    credentials: 'include',
     headers: {
       ...options.headers,
     },

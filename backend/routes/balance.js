@@ -1,29 +1,12 @@
 const express = require('express');
 const Balance = require('../models/Balance');
-const User = require('../models/User');
+const requireSession = require('../middleware/requireSession');
 const router = express.Router();
 
-// Получить баланс пользователя
-router.post('/get', async (req, res) => {
+// Получить баланс пользователя (по сессии)
+router.post('/get', requireSession, async (req, res) => {
   try {
-    const { user_id, email, phone } = req.body;
-    
-    let userId = user_id;
-    
-    // Если передан email или phone, находим user_id
-    if (!userId && (email || phone)) {
-      const user = await User.findByEmailOrPhone(email, phone);
-      if (!user) {
-        return res.status(404).json({ error: 'Пользователь не найден' });
-      }
-      userId = user.id;
-    }
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
-    }
-    
-    const balance = await Balance.findByUserId(userId);
+    const balance = await Balance.findByUserId(req.userId);
     
     res.json({
       success: true,
@@ -39,29 +22,15 @@ router.post('/get', async (req, res) => {
 });
 
 // Обновить баланс монет
-router.post('/update-coins', async (req, res) => {
+router.post('/update-coins', requireSession, async (req, res) => {
   try {
-    const { user_id, email, phone, coins } = req.body;
-    
+    const { coins } = req.body;
+
     if (coins === undefined || coins < 0) {
       return res.status(400).json({ error: 'Некорректное значение coins' });
     }
-    
-    let userId = user_id;
-    
-    if (!userId && (email || phone)) {
-      const user = await User.findByEmailOrPhone(email, phone);
-      if (!user) {
-        return res.status(404).json({ error: 'Пользователь не найден' });
-      }
-      userId = user.id;
-    }
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
-    }
-    
-    const balance = await Balance.updateCoins(userId, coins);
+
+    const balance = await Balance.updateCoins(req.userId, coins);
     
     res.json({
       success: true,
@@ -77,29 +46,15 @@ router.post('/update-coins', async (req, res) => {
 });
 
 // Обновить баланс подсказок
-router.post('/update-hints', async (req, res) => {
+router.post('/update-hints', requireSession, async (req, res) => {
   try {
-    const { user_id, email, phone, hints } = req.body;
-    
+    const { hints } = req.body;
+
     if (hints === undefined || hints < 0) {
       return res.status(400).json({ error: 'Некорректное значение hints' });
     }
-    
-    let userId = user_id;
-    
-    if (!userId && (email || phone)) {
-      const user = await User.findByEmailOrPhone(email, phone);
-      if (!user) {
-        return res.status(404).json({ error: 'Пользователь не найден' });
-      }
-      userId = user.id;
-    }
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
-    }
-    
-    const balance = await Balance.updateHints(userId, hints);
+
+    const balance = await Balance.updateHints(req.userId, hints);
     
     res.json({
       success: true,
@@ -115,29 +70,15 @@ router.post('/update-hints', async (req, res) => {
 });
 
 // Добавить монеты
-router.post('/add-coins', async (req, res) => {
+router.post('/add-coins', requireSession, async (req, res) => {
   try {
-    const { user_id, email, phone, amount } = req.body;
-    
+    const { amount } = req.body;
+
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Некорректное значение amount' });
     }
-    
-    let userId = user_id;
-    
-    if (!userId && (email || phone)) {
-      const user = await User.findByEmailOrPhone(email, phone);
-      if (!user) {
-        return res.status(404).json({ error: 'Пользователь не найден' });
-      }
-      userId = user.id;
-    }
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
-    }
-    
-    const balance = await Balance.addCoins(userId, amount);
+
+    const balance = await Balance.addCoins(req.userId, amount);
     
     res.json({
       success: true,
@@ -153,29 +94,15 @@ router.post('/add-coins', async (req, res) => {
 });
 
 // Вычесть монеты
-router.post('/subtract-coins', async (req, res) => {
+router.post('/subtract-coins', requireSession, async (req, res) => {
   try {
-    const { user_id, email, phone, amount } = req.body;
-    
+    const { amount } = req.body;
+
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Некорректное значение amount' });
     }
-    
-    let userId = user_id;
-    
-    if (!userId && (email || phone)) {
-      const user = await User.findByEmailOrPhone(email, phone);
-      if (!user) {
-        return res.status(404).json({ error: 'Пользователь не найден' });
-      }
-      userId = user.id;
-    }
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
-    }
-    
-    const balance = await Balance.subtractCoins(userId, amount);
+
+    const balance = await Balance.subtractCoins(req.userId, amount);
     
     res.json({
       success: true,
@@ -194,29 +121,15 @@ router.post('/subtract-coins', async (req, res) => {
 });
 
 // Добавить подсказки
-router.post('/add-hints', async (req, res) => {
+router.post('/add-hints', requireSession, async (req, res) => {
   try {
-    const { user_id, email, phone, amount } = req.body;
-    
+    const { amount } = req.body;
+
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Некорректное значение amount' });
     }
-    
-    let userId = user_id;
-    
-    if (!userId && (email || phone)) {
-      const user = await User.findByEmailOrPhone(email, phone);
-      if (!user) {
-        return res.status(404).json({ error: 'Пользователь не найден' });
-      }
-      userId = user.id;
-    }
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
-    }
-    
-    const balance = await Balance.addHints(userId, amount);
+
+    const balance = await Balance.addHints(req.userId, amount);
     
     res.json({
       success: true,
@@ -232,29 +145,15 @@ router.post('/add-hints', async (req, res) => {
 });
 
 // Вычесть подсказки
-router.post('/subtract-hints', async (req, res) => {
+router.post('/subtract-hints', requireSession, async (req, res) => {
   try {
-    const { user_id, email, phone, amount } = req.body;
-    
+    const { amount } = req.body;
+
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Некорректное значение amount' });
     }
-    
-    let userId = user_id;
-    
-    if (!userId && (email || phone)) {
-      const user = await User.findByEmailOrPhone(email, phone);
-      if (!user) {
-        return res.status(404).json({ error: 'Пользователь не найден' });
-      }
-      userId = user.id;
-    }
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
-    }
-    
-    const balance = await Balance.subtractHints(userId, amount);
+
+    const balance = await Balance.subtractHints(req.userId, amount);
     
     res.json({
       success: true,
