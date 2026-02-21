@@ -2,8 +2,6 @@ const express = require('express');
 const crypto = require('crypto');
 const User = require('../models/User');
 const { sendVerificationEmail } = require('../services/email');
-const sessionService = require('../services/session');
-const requireSession = require('../middleware/requireSession');
 const router = express.Router();
 
 // Генерирует токен верификации и время истечения (24 часа)
@@ -119,9 +117,6 @@ router.post('/login', async (req, res) => {
     const Balance = require('../models/Balance');
     const balance = await Balance.findByUserId(user.id);
 
-    const { sessionId, expiresAt } = await sessionService.create(user.id);
-    sessionService.setCookie(res, sessionId);
-
     res.json({
       success: true,
       message: 'Успешный вход',
@@ -143,75 +138,35 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Подтверждение почты по ссылке из письма (возвращает user + balance для автовхода)
+// Подтверждение почты по ссылке из письма
 router.get('/verify-email', async (req, res) => {
-  const { token } = req.query;
-  if (!token) {
+  let { token } = req.query;
+  if (token && typeof token !== 'string') token = String(token).trim();
+  if (!token || !token.trim()) {
     return res.status(400).json({ error: 'Не указан токен подтверждения' });
   }
 
   try {
     const result = await User.verifyEmail(token);
     if (!result.success) {
+      if (result.alreadyUsed) {
+        return res.json({
+          success: true,
+          alreadyUsed: true,
+          message: 'Ссылка уже была использована. Ваш аккаунт подтверждён — войдите в аккаунт.',
+        });
+      }
       return res.status(400).json({ error: result.error });
     }
-    const fullUser = await User.findById(result.user.id);
-    const Balance = require('../models/Balance');
-    const balance = await Balance.findByUserId(result.user.id);
-
-    const { sessionId } = await sessionService.create(result.user.id);
-    sessionService.setCookie(res, sessionId);
-
     res.json({
       success: true,
-      message: 'Почта подтверждена.',
-      user: {
-        user_id: fullUser.id,
-        nickname: fullUser.nickname,
-        email: fullUser.email,
-        phone: fullUser.phone,
-        isAdmin: fullUser.is_admin || false,
-        balance: { coins: balance.coins, hints: balance.hints },
-      },
+      message: result.user ? 'Почта подтверждена. Теперь вы можете войти.' : 'Почта подтверждена.',
+      user: result.user,
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
-});
-
-// Текущий пользователь по сессии (для загрузки состояния без localStorage)
-router.get('/me', requireSession, async (req, res) => {
-  try {
-    const user = await User.findById(req.userId);
-    if (!user) {
-      sessionService.clearCookie(res);
-      return res.status(401).json({ error: 'Требуется авторизация' });
-    }
-    const Balance = require('../models/Balance');
-    const balance = await Balance.findByUserId(user.id);
-    res.json({
-      user: {
-        user_id: user.id,
-        nickname: user.nickname,
-        email: user.email,
-        phone: user.phone,
-        isAdmin: user.is_admin || false,
-        balance: { coins: balance.coins, hints: balance.hints },
-      },
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Ошибка сервера' });
-  }
-});
-
-// Выход — уничтожить сессию и очистить cookie
-router.post('/logout', (req, res) => {
-  const sessionId = req.cookies && req.cookies[sessionService.COOKIE_NAME];
-  if (sessionId) sessionService.destroyBySessionId(sessionId).catch(() => {});
-  sessionService.clearCookie(res);
-  res.json({ success: true, message: 'Выход выполнен' });
 });
 
 // Повторная отправка письма подтверждения

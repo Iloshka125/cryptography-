@@ -48,60 +48,36 @@ const PageTransition = ({ children }) => {
 };
 
 const ProtectedRoute = ({ children, requireAuth = false }) => {
-  const { authLoading, isAuthenticated } = useAuth();
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <p className="text-gray-400">Загрузка...</p>
-      </div>
-    );
-  }
-
+  const { isAuthenticated } = useAuth();
+  
   if (requireAuth && !isAuthenticated) {
     return <Navigate to="/home" replace />;
   }
-
+  
   if (!requireAuth && isAuthenticated) {
     return <Navigate to="/enigma" replace />;
   }
-
+  
   return children;
 };
 
 const AdminRoute = ({ children }) => {
-  const { authLoading, isAuthenticated, isAdmin } = useAuth();
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <p className="text-gray-400">Загрузка...</p>
-      </div>
-    );
-  }
-
+  const { isAuthenticated, isAdmin } = useAuth();
+  
   if (!isAuthenticated) {
     return <Navigate to="/home" replace />;
   }
-
+  
   if (!isAdmin) {
     return <Navigate to="/enigma" replace />;
   }
-
+  
   return children;
 };
 
 const AppRoutes = () => {
-  const { authLoading, isAuthenticated } = useAuth();
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <p className="text-gray-400">Загрузка...</p>
-      </div>
-    );
-  }
-
+  const { isAuthenticated } = useAuth();
+  
   return (
     <Routes>
       <Route index element={<Navigate to={isAuthenticated ? "/categories" : "/home"} replace />} />

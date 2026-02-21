@@ -4,8 +4,6 @@ const path = require('path');
 const CompetitionLevel = require('../models/CompetitionLevel');
 const Competition = require('../models/Competition');
 const User = require('../models/User');
-const requireSession = require('../middleware/requireSession');
-const optionalSession = require('../middleware/requireSession').optionalSession;
 const router = express.Router();
 
 // Настройка multer для загрузки файлов
@@ -37,21 +35,23 @@ router.get('/competition/:competitionId', async (req, res) => {
   }
 });
 
-// Получить уровень по hash (прогресс по сессии)
-router.get('/:hash', optionalSession, async (req, res) => {
+// Получить уровень по hash
+router.get('/:hash', async (req, res) => {
   try {
     const { hash } = req.params;
-    const userId = req.userId;
-
+    const userId = req.query.user_id;
+    
+    // Пробуем найти по hash, если не найдено - пробуем по ID (для обратной совместимости)
     let level = await CompetitionLevel.findByHash(hash);
     if (!level && !isNaN(parseInt(hash))) {
       level = await CompetitionLevel.findById(parseInt(hash));
     }
-
+    
     if (!level) {
       return res.status(404).json({ error: 'Уровень не найден' });
     }
-
+    
+    // Проверяем статус соревнования - если еще не началось, не даем доступ к уровням
     const competition = await Competition.findById(level.competition_id);
     if (competition) {
       const calculatedStatus = Competition.calculateStatus(competition.start_date, competition.end_date);
@@ -59,15 +59,17 @@ router.get('/:hash', optionalSession, async (req, res) => {
         return res.status(403).json({ error: 'Соревнование еще не началось. Уровни будут доступны после начала соревнования.' });
       }
     }
-
+    
+    // Не возвращаем флаг для безопасности
     const { flag, ...levelWithoutFlag } = level;
-
+    
+    // Проверяем, решен ли уровень пользователем
     let completed = false;
     let isFirstSolver = false;
     if (userId) {
-      completed = await CompetitionLevel.isLevelCompleted(userId, level.competition_id, level.id);
+      completed = await CompetitionLevel.isLevelCompleted(parseInt(userId), level.competition_id, level.id);
       if (completed) {
-        const progress = await CompetitionLevel.getUserProgress(userId, level.competition_id);
+        const progress = await CompetitionLevel.getUserProgress(parseInt(userId), level.competition_id);
         const userLevelProgress = progress.find(p => p.level_id === level.id);
         isFirstSolver = userLevelProgress?.is_first_solver || false;
       }
@@ -215,25 +217,31 @@ router.delete('/:hash', async (req, res) => {
   }
 });
 
-// Проверить флаг уровня соревнования (текущая сессия)
-router.post('/:hash/check', requireSession, async (req, res) => {
+// Проверить флаг уровня соревнования
+router.post('/:hash/check', async (req, res) => {
   try {
     const { hash } = req.params;
-    const { flag } = req.body;
-
+    const { flag, user_id } = req.body;
+    
     if (!flag) {
       return res.status(400).json({ error: 'Требуется флаг' });
     }
 
+    if (!user_id) {
+      return res.status(400).json({ error: 'Требуется user_id' });
+    }
+    
+    // Пробуем найти по hash, если не найдено - пробуем по ID
     let level = await CompetitionLevel.findByHash(hash);
     if (!level && !isNaN(parseInt(hash))) {
       level = await CompetitionLevel.findById(parseInt(hash));
     }
-
+    
     if (!level) {
       return res.status(404).json({ error: 'Уровень не найден' });
     }
 
+    // Проверяем статус соревнования - если еще не началось, не даем доступ к уровням
     const competition = await Competition.findById(level.competition_id);
     if (competition) {
       const calculatedStatus = Competition.calculateStatus(competition.start_date, competition.end_date);
@@ -242,7 +250,7 @@ router.post('/:hash/check', requireSession, async (req, res) => {
       }
     }
 
-    const userId = req.userId;
+    const userId = parseInt(user_id);
     const competitionId = level.competition_id;
 
     // Проверяем, не решен ли уже уровень

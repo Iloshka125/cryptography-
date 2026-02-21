@@ -37,10 +37,14 @@ class User {
     return res.rows[0] || null;
   }
 
-  // Подтвердить почту по токену
+  // Подтвердить почту по токену (токен нормализуем: пробелы в URL иногда приходят вместо +)
   static async verifyEmail(token) {
-    const user = await this.findByVerificationToken(token);
-    if (!user) return { success: false, error: 'Неверная или устаревшая ссылка' };
+    const raw = typeof token === 'string' ? token.trim() : '';
+    if (!raw) return { success: false, error: 'Не указан токен подтверждения' };
+    const normalized = raw.replace(/\s/g, '+');
+    let user = await this.findByVerificationToken(normalized);
+    if (!user) user = await this.findByVerificationToken(raw);
+    if (!user) return { success: false, error: 'Неверная или устаревшая ссылка', alreadyUsed: true };
     if (user.email_verified) return { success: true, user };
     if (user.email_verification_expires_at && new Date(user.email_verification_expires_at) < new Date()) {
       return { success: false, error: 'Ссылка истекла. Запросите новое письмо.' };
@@ -49,7 +53,7 @@ class User {
       UPDATE users
       SET email_verified = true, email_verification_token = NULL, email_verification_expires_at = NULL
       WHERE id = $1
-      RETURNING id, nickname, email, phone, is_admin
+      RETURNING id, nickname, email, phone
     `;
     const res = await pool.query(updateQuery, [user.id]);
     return { success: true, user: res.rows[0] };

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './config.js';
+const API_BASE_URL = 'http://5.35.92.24:3000';
 
 /**
  * Выполняет API запрос
@@ -10,7 +10,6 @@ async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
   const config = {
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -93,20 +92,5 @@ export async function login(credentials) {
     method: 'POST',
     body: credentials,
   });
-}
-
-/**
- * Текущий пользователь по сессии (cookie)
- * @returns {Promise<{ user: object }>}
- */
-export async function getMe() {
-  return apiRequest('/auth/me', { method: 'GET' });
-}
-
-/**
- * Выход — уничтожение сессии на сервере и очистка cookie
- */
-export async function logoutRequest() {
-  return apiRequest('/auth/logout', { method: 'POST' });
 }
 

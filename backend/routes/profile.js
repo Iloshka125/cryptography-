@@ -2,19 +2,38 @@ const express = require('express');
 const User = require('../models/User');
 const Achievement = require('../models/Achievement');
 const Balance = require('../models/Balance');
-const requireSession = require('../middleware/requireSession');
 const router = express.Router();
 
-// Получить профиль текущего пользователя (по сессии)
-router.post('/get', requireSession, async (req, res) => {
+// Получить профиль пользователя
+router.post('/get', async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
+    const { user_id, email, phone } = req.body;
+    
+    let userId = user_id;
+    
+    // Если передан email или phone, находим user_id
+    if (!userId && (email || phone)) {
+      const user = await User.findByEmailOrPhone(email, phone);
+      if (!user) {
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+      userId = user.id;
+    }
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
+    }
+    
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
-
-    const balance = await Balance.findByUserId(req.userId);
-    const achievements = await Achievement.findByUserId(req.userId);
+    
+    // Получаем баланс
+    const balance = await Balance.findByUserId(userId);
+    
+    // Получаем достижения
+    const achievements = await Achievement.findByUserId(userId);
     
     res.json({
       success: true,
@@ -44,13 +63,28 @@ router.post('/get', requireSession, async (req, res) => {
   }
 });
 
-// Обновить профиль текущего пользователя
-router.post('/update', requireSession, async (req, res) => {
+// Обновить профиль пользователя
+router.post('/update', async (req, res) => {
   try {
-    const { nickname, avatar, email, phone } = req.body;
-
+    const { user_id, email, phone, nickname, avatar } = req.body;
+    
+    let userId = user_id;
+    
+    if (!userId && (email || phone)) {
+      const user = await User.findByEmailOrPhone(email, phone);
+      if (!user) {
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+      userId = user.id;
+    }
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
+    }
+    
+    // Проверяем уникальность nickname, email, phone
     if (nickname || email !== undefined || phone !== undefined) {
-      const existingUser = await User.findById(req.userId);
+      const existingUser = await User.findById(userId);
       // Нормализуем пустые строки в null
       const normalizedEmail = email === '' ? null : (email || existingUser.email);
       const normalizedPhone = phone === '' ? null : (phone || existingUser.phone);
@@ -67,7 +101,7 @@ router.post('/update', requireSession, async (req, res) => {
         if (exists) {
           // Проверяем, что это не тот же пользователь
           const user = await User.findByEmailOrPhone(checkData.email, checkData.phone);
-          if (user && user.id !== req.userId) {
+          if (user && user.id !== userId) {
             return res.status(409).json({ error: 'Пользователь с такими данными уже существует' });
           }
         }
@@ -77,7 +111,7 @@ router.post('/update', requireSession, async (req, res) => {
     // Нормализуем пустые строки в null перед обновлением
     const normalizedEmail = email === '' ? null : email;
     const normalizedPhone = phone === '' ? null : phone;
-    const updatedUser = await User.update(req.userId, { nickname, avatar, email: normalizedEmail, phone: normalizedPhone });
+    const updatedUser = await User.update(userId, { nickname, avatar, email: normalizedEmail, phone: normalizedPhone });
     
     if (!updatedUser) {
       return res.status(404).json({ error: 'Пользователь не найден' });
@@ -100,26 +134,52 @@ router.post('/update', requireSession, async (req, res) => {
   }
 });
 
-// Изменить пароль (текущая сессия)
-router.post('/change-password', requireSession, async (req, res) => {
+// Изменить пароль
+router.post('/change-password', async (req, res) => {
   try {
-    const { old_password, new_password } = req.body;
-
+    const { user_id, email, phone, old_password, new_password } = req.body;
+    
     if (!old_password || !new_password) {
       return res.status(400).json({ error: 'Требуется старый и новый пароль' });
     }
-
-    const user = await User.findById(req.userId);
-    if (!user) {
-      return res.status(404).json({ error: 'Пользователь не найден' });
+    
+    let userId = user_id;
+    
+    if (!userId && (email || phone)) {
+      const user = await User.findByEmailOrPhone(email, phone);
+      if (!user) {
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+      userId = user.id;
     }
-
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
+    }
+    
+    // Получаем пользователя для проверки старого пароля
+    let user = null;
+    if (email || phone) {
+      user = await User.findByEmailOrPhone(email, phone);
+    }
+    if (!user) {
+      // Если не нашли по email/phone, ищем по ID
+      const pool = require('../config/database');
+      const userById = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      if (userById.rows.length === 0) {
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+      user = userById.rows[0];
+    }
+    
+    // Проверяем старый пароль
     const isValid = await User.comparePassword(old_password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({ error: 'Неверный текущий пароль' });
     }
-
-    await User.updatePassword(req.userId, new_password);
+    
+    // Обновляем пароль
+    await User.updatePassword(userId, new_password);
     
     res.json({
       success: true,
@@ -131,16 +191,30 @@ router.post('/change-password', requireSession, async (req, res) => {
   }
 });
 
-// Разблокировать достижение (текущая сессия)
-router.post('/unlock-achievement', requireSession, async (req, res) => {
+// Разблокировать достижение
+router.post('/unlock-achievement', async (req, res) => {
   try {
-    const { achievement_id } = req.body;
-
+    const { user_id, email, phone, achievement_id } = req.body;
+    
     if (!achievement_id) {
       return res.status(400).json({ error: 'Требуется achievement_id' });
     }
-
-    const achievement = await Achievement.unlock(req.userId, achievement_id);
+    
+    let userId = user_id;
+    
+    if (!userId && (email || phone)) {
+      const user = await User.findByEmailOrPhone(email, phone);
+      if (!user) {
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+      userId = user.id;
+    }
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'Требуется user_id, email или phone' });
+    }
+    
+    const achievement = await Achievement.unlock(userId, achievement_id);
     
     res.json({
       success: true,

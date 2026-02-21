@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './config.js';
+const API_BASE_URL = 'http://5.35.92.24:3000';
 
 /**
  * Выполняет API запрос
@@ -7,7 +7,6 @@ async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
   const config = {
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -231,6 +230,7 @@ export async function createDuelTask(taskData, userId) {
   
   formData.append('user_id', userId);
   
+  const API_BASE_URL = 'http://5.35.92.24:3000';
   const response = await fetch(`${API_BASE_URL}/duels/tasks?user_id=${userId}`, {
     method: 'POST',
     body: formData,
@@ -264,6 +264,7 @@ export async function updateDuelTask(taskId, taskData, userId) {
   
   formData.append('user_id', userId);
   
+  const API_BASE_URL = 'http://5.35.92.24:3000';
   const response = await fetch(`${API_BASE_URL}/duels/tasks/${taskId}?user_id=${userId}`, {
     method: 'PUT',
     body: formData,

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './config.js';
+const API_BASE_URL = 'http://5.35.92.24:3000';
 
 /**
  * Выполняет API запрос
@@ -7,7 +7,6 @@ async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
   const config = {
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -117,6 +116,7 @@ export async function createLevel(categoryId, levelData) {
     }
   });
   
+  const API_BASE_URL = 'http://5.35.92.24:3000';
   const response = await fetch(`${API_BASE_URL}/categories/${categoryId}/levels`, {
     method: 'POST',
     body: formData,
@@ -147,6 +147,7 @@ export async function updateLevel(levelId, levelData) {
     }
   });
   
+  const API_BASE_URL = 'http://5.35.92.24:3000';
   const response = await fetch(`${API_BASE_URL}/categories/levels/${levelId}`, {
     method: 'PUT',
     body: formData,
