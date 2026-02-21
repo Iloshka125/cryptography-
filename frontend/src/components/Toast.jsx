@@ -21,15 +21,19 @@ const Toast = ({ message, type = 'success', onClose, duration = 1500 }) => {
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const bgColor = type === 'success' 
+  const isSuccess = type === 'success';
+  const isInfo = type === 'info';
+  const bgColor = isSuccess
     ? 'bg-gradient-to-r from-green-500/20 to-green-400/10 border-green-400/50'
-    : 'bg-gradient-to-r from-red-500/20 to-red-400/10 border-red-400/50';
-  
-  const textColor = type === 'success' 
-    ? 'text-green-300' 
-    : 'text-red-300';
-
-  const icon = type === 'success' ? '✓' : '✕';
+    : isInfo
+      ? 'bg-gradient-to-r from-cyan-500/20 to-cyan-400/10 border-cyan-400/50'
+      : 'bg-gradient-to-r from-red-500/20 to-red-400/10 border-red-400/50';
+  const textColor = isSuccess
+    ? 'text-green-300'
+    : isInfo
+      ? 'text-cyan-300'
+      : 'text-red-300';
+  const icon = isSuccess ? '✓' : isInfo ? 'ℹ' : '✕';
 
   return (
     <div
@@ -55,7 +59,7 @@ const Toast = ({ message, type = 'success', onClose, duration = 1500 }) => {
 
 Toast.propTypes = {
   message: PropTypes.string.isRequired,
-  type: PropTypes.oneOf(['success', 'error']),
+  type: PropTypes.oneOf(['success', 'error', 'info']).isRequired,
   onClose: PropTypes.func,
   duration: PropTypes.number,
 };

@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -266,6 +270,17 @@ body::after {
   width: 100%;
 }
 
+/* Обёртка страниц входа/регистрации — карточка по центру экрана */
+.auth-page-wrap {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
 .auth-card {
   width: 520px;
   max-width: calc(100vw - 32px);
@@ -279,6 +294,8 @@ body::after {
     0 0 10px #00ffff1a,
     0 0 10px #00ffff1a;
   color: var(--foreground);
+  margin: 0 auto;
+  flex-shrink: 0;
 }
 
 .auth-card__header h1 {

@@ -42,6 +42,7 @@ const addPrizeAwardedToCompetitions = require('./migrations/addPrizeAwardedToCom
 const createDuelsTables = require('./migrations/createDuelsTables');
 const createDuelCategoriesTable = require('./migrations/createDuelCategoriesTable');
 const addExpiresAtToDuelChallenges = require('./migrations/addExpiresAtToDuelChallenges');
+const addEmailVerificationFields = require('./migrations/addEmailVerificationFields');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -105,6 +106,7 @@ app.use((req, res, next) => {
     await createDuelsTables();
     await createDuelCategoriesTable();
     await addExpiresAtToDuelChallenges();
+    await addEmailVerificationFields();
   } catch (err) {
     console.error('Ошибка выполнения миграций:', err);
     process.exit(1);

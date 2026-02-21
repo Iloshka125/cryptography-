@@ -57,6 +57,29 @@ export async function register(userData) {
 }
 
 /**
+ * Подтверждение почты по токену из ссылки в письме
+ * @param {string} token - Токен из URL ?token=xxx
+ * @returns {Promise<object>}
+ */
+export async function verifyEmail(token) {
+  return apiRequest(`/auth/verify-email?token=${encodeURIComponent(token)}`, {
+    method: 'GET',
+  });
+}
+
+/**
+ * Повторная отправка письма подтверждения
+ * @param {string} email - Email пользователя
+ * @returns {Promise<object>}
+ */
+export async function resendVerificationEmail(email) {
+  return apiRequest('/auth/resend-verification', {
+    method: 'POST',
+    body: { email },
+  });
+}
+
+/**
  * Вход пользователя
  * @param {object} credentials - Учетные данные
  * @param {string} [credentials.email] - Email (опционально, если есть phone)

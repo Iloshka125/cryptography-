@@ -4,6 +4,7 @@ import { ToastProvider } from './contexts/ToastContext.jsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
+import VerifyEmailPage from './pages/VerifyEmailPage.jsx';
 import EnigmaPage from './pages/EnigmaPage.jsx';
 import CategoriesPage from './pages/CategoriesPage.jsx';
 import BattlePassPage from './pages/BattlePassPage.jsx';
@@ -149,6 +150,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requireAuth={false}>
             <RegisterPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/verify-email" 
+        element={
+          <ProtectedRoute requireAuth={false}>
+            <VerifyEmailPage />
           </ProtectedRoute>
         } 
       />

@@ -3,22 +3,68 @@ const bcrypt = require('bcrypt');
 
 class User {
   // Создать пользователя
-  static async create({ nickname, email, phone, password }) {
+  // emailVerified, emailVerificationToken, emailVerificationExpires — для подтверждения почты
+  static async create({ nickname, email, phone, password, emailVerified = false, emailVerificationToken = null, emailVerificationExpires = null }) {
     const hashedPassword = await bcrypt.hash(password, 10);
     const query = `
-      INSERT INTO users (nickname, email, phone, password_hash, experience, level)
-      VALUES ($1, $2, $3, $4, 0, 1)
-      RETURNING id, nickname, email, phone, avatar, level, experience, is_admin;
+      INSERT INTO users (nickname, email, phone, password_hash, experience, level, email_verified, email_verification_token, email_verification_expires_at)
+      VALUES ($1, $2, $3, $4, 0, 1, $5, $6, $7)
+      RETURNING id, nickname, email, phone, avatar, level, experience, is_admin, email_verified;
     `;
-    // Конвертируем пустые строки в null для уникальности
     const values = [
-      nickname, 
-      email === '' ? null : email, 
-      phone === '' ? null : phone, 
-      hashedPassword
+      nickname,
+      email === '' ? null : email,
+      phone === '' ? null : phone,
+      hashedPassword,
+      emailVerified,
+      emailVerificationToken,
+      emailVerificationExpires
     ];
     const res = await pool.query(query, values);
     return res.rows[0];
+  }
+
+  // Найти пользователя по токену верификации
+  static async findByVerificationToken(token) {
+    if (!token) return null;
+    const query = `
+      SELECT id, nickname, email, email_verified, email_verification_expires_at
+      FROM users
+      WHERE email_verification_token = $1
+      LIMIT 1
+    `;
+    const res = await pool.query(query, [token]);
+    return res.rows[0] || null;
+  }
+
+  // Подтвердить почту по токену
+  static async verifyEmail(token) {
+    const user = await this.findByVerificationToken(token);
+    if (!user) return { success: false, error: 'Неверная или устаревшая ссылка' };
+    if (user.email_verified) return { success: true, user };
+    if (user.email_verification_expires_at && new Date(user.email_verification_expires_at) < new Date()) {
+      return { success: false, error: 'Ссылка истекла. Запросите новое письмо.' };
+    }
+    const updateQuery = `
+      UPDATE users
+      SET email_verified = true, email_verification_token = NULL, email_verification_expires_at = NULL
+      WHERE id = $1
+      RETURNING id, nickname, email, phone
+    `;
+    const res = await pool.query(updateQuery, [user.id]);
+    return { success: true, user: res.rows[0] };
+  }
+
+  // Установить новый токен верификации и отправить письмо (повторная отправка)
+  static async setVerificationToken(userId, token, expiresAt) {
+    const query = `
+      UPDATE users
+      SET email_verification_token = $1, email_verification_expires_at = $2
+      WHERE id = $3
+      RETURNING id, nickname, email
+    `;
+    const res = await pool.query(query, [token, expiresAt, userId]);
+    return res.rows[0] || null;
   }
 
   // Найти пользователя по email или phone
@@ -42,14 +88,14 @@ class User {
       return null;
     }
 
-    const query = `SELECT id, nickname, email, phone, password_hash, avatar, level, experience, is_admin FROM users WHERE ${conditions.join(' OR ')} LIMIT 1`;
+    const query = `SELECT id, nickname, email, phone, password_hash, avatar, level, experience, is_admin, email_verified FROM users WHERE ${conditions.join(' OR ')} LIMIT 1`;
     const res = await pool.query(query, values);
     return res.rows[0] || null;
   }
 
   // Найти пользователя по ID
   static async findById(id) {
-    const query = `SELECT id, nickname, email, phone, password_hash, avatar, level, experience, is_admin FROM users WHERE id = $1`;
+    const query = `SELECT id, nickname, email, phone, password_hash, avatar, level, experience, is_admin, email_verified FROM users WHERE id = $1`;
     const res = await pool.query(query, [id]);
     return res.rows[0] || null;
   }

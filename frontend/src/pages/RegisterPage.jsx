@@ -106,7 +106,17 @@ const RegisterPage = () => {
       }
       
       const response = await register(data);
-      // Устанавливаем авторизацию с данными пользователя
+
+      // Если нужна верификация почты — не логиним, показываем сообщение
+      if (response.needsVerification) {
+        const msg = response.message || 'Проверьте почту — письмо с подтверждением отправлено. Если не видите письмо — проверьте папку «Спам».';
+        showToast(msg, 'success');
+        setLoading(false);
+        navigate('/login', { state: { message: msg, email: data.email } });
+        return;
+      }
+
+      // Авторизация при регистрации только по телефону (без email)
       const userData = response.user || response;
       authLogin({
         user_id: userData.user_id || response.user_id,
@@ -114,14 +124,12 @@ const RegisterPage = () => {
         email: data.email,
         phone: data.phone,
         isAdmin: userData.isAdmin || false,
-        balance: userData.balance || { coins: 1000, hints: 5 }, // Начальный баланс при регистрации
+        balance: userData.balance || { coins: 1000, hints: 5 },
       });
       showToast(
         response.message || 'Пользователь успешно зарегистрирован!',
         'success'
       );
-      console.log('Registration successful:', response);
-      // Перенаправляем на главную страницу
       setTimeout(() => {
         navigate('/enigma');
       }, 1500);
@@ -130,7 +138,6 @@ const RegisterPage = () => {
         error.message || 'Произошла ошибка при регистрации',
         'error'
       );
-      console.error('Registration error:', error);
       setLoading(false);
     }
   };
@@ -146,7 +153,7 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="page-fade-in min-h-screen flex items-center justify-center p-4">
+    <div className="page-fade-in auth-page-wrap">
       <AuthCard
         title="Регистрация"
       >
